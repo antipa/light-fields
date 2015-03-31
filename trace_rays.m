@@ -3,7 +3,7 @@
 %Notes:
 %Make sensor size dynamic
 profile on
-in = load('diffuser.mat');
+in = load('./Output/diffuser.mat');
 diffuser_in = in.filtered*50;
 diff_upsample = 0;
 x = in.x;
@@ -24,13 +24,13 @@ zmax = 200;
 zstep = 50;
 
 %Setup tracing grid
-M = 50;   %number of Y points use 1 for 1d case
-N = 50; % number of X points  
+M = 100;   %number of Y points use 1 for 1d case
+N = 100; % number of X points  
 P = 5; %number of phi points (angle in y (M) direction)   use 1 for 1d
 Q = 5; %number of theta points (angle in x direction)
-nrays = 1e4;
+nrays = 1e5;
 
-x_range = 1000; %how far along x to go in same units as pixels (micron)
+x_range = 2000; %how far along x to go in same units as pixels (micron)
     %This will be divided into N steps
 x_idx = (x-min(x))/px;   %x vector as index
 range_idx = floor(x_range/px);
@@ -40,7 +40,7 @@ if dx_idx<1
 end
     
 
-y_range = 1000;   %in M steps. Use 0 for 1d.
+y_range = 2000;   %in M steps. Use 0 for 1d.
 y_idx = (y-min(y))/px;   %x vector as index
 range_idy = floor(y_range/px);
 dy_idx = floor(y_range/M/px);
@@ -49,8 +49,8 @@ if dy_idx<1
 end
 
 %Setup sensor parameters for a sensor that is the same size as the diffuser
-npx =500;
-npy = 500;
+npx =1000;
+npy = 1000;
 
 ssize = [max(y_range,1), max(x_range,1)];   %Sensor size in microns
 dpx = ssize(2)/npx;
@@ -83,11 +83,17 @@ dth = th_range/Q;
 
 A_sub = sparse(npx*npy,N*M*P*Q);
 
-    
+ 
 
 %preallocate 
 A_row_index = cell(M*N*P*Q,1);  %Row index fo
 A_vals = A_row_index;
+r_out = [];
+c_out = [];
+v_out = [];
+r_outc = cell(M*N*P*Q,1);
+c_outc = cell(M*N*P*Q,1);
+v_outc = cell(M*N*P*Q,1);
 
 %Setup gradients
 if dy_idx==0
@@ -120,7 +126,9 @@ h5 = waitbar(0,'beginning');
     %Loop over grid positions on surface
 [Xg, Yg] = meshgrid(-dx_idx*px/2:px:dx_idx*px/2,-dx_idx*px/2:px:dx_idx*px/2);
 tstart1 = tic;
+
 for mm = 1:max(1,M)
+    ytstart = tic;
     %Get indices of region in y direction
     midx = (((mm-1)*dy_idx+1):(mm*dy_idx+1))';  
     %Generate y vector in physical units in local coordinates 
@@ -215,8 +223,13 @@ for mm = 1:max(1,M)
                     LF_index = P*Q*N*(mm-1)+P*Q*(nn-1)+Q*(pp-1)+qq;
                     %[A_row_index{LF_index}, A_vals{LF_index}] = find(gatherer(:));                    
                     %A_sub(:,LF_index) = gatherer(:);
-                    A_sub = build_A_matrix(A_sub,gatherer,LF_index);
-                    
+                    %A_sub = build_A_matrix(A_sub,gatherer,LF_index);
+                    %[r,c,v] = build_A_matrix_sparse(gatherer,LF_index);
+                    %r_out = cat(1,r_out,r);
+                    %c_out = cat(1,c_out,c);
+                    %v_out = cat(1,v_out,v);
+                    [r_outc{LF_index}, c_outc{LF_index}, v_outc{LF_index}] = ...
+                        build_A_matrix_sparse(gatherer,LF_index);
                     if vis_prop %animation to visualize propagation after refraction
 
                         for z = 0:zstep:zmax
@@ -335,13 +348,21 @@ for mm = 1:max(1,M)
             end
         end         
     end
+    ytend = toc(ytstart);
     waitbar(LF_index/M/N/P/Q,h5,...
-             [num2str((M*N*P*Q-LF_index)),' left of ',num2str(M*N*P*Q),' total'])        
+             [num2str(100*(LF_index)/(M*N*P*Q)),'% done. ',num2str(M*N*P*Q),...
+             ' total, ',num2str(ytend),' seconds per pass. ~',...
+             num2str(M*N*P*Q-LF_index)*ytend,' seconds to go.'])        
 end
+r_out = vertcat(r_outc{:});
+c_out = vertcat(c_outc{:});
+v_out = vertcat(v_outc{:});
+A_sub = sparse(r_out,c_out,v_out,npx*npy,N*M*P*Q);
 total_runtime = toc(tstart1);
 fprintf([num2str(total_runtime),' seconds for ',num2str(P*Q*N*M*nrays),' rays\n'])
 
 profile viewer
+
 
     %fit polynomial locally
     
