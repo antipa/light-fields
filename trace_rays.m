@@ -28,7 +28,7 @@ M = 100;   %number of Y points use 1 for 1d case
 N = 100; % number of X points  
 P = 5; %number of phi points (angle in y (M) direction)   use 1 for 1d
 Q = 5; %number of theta points (angle in x direction)
-nrays = 1e5;
+nrays = 5e4;
 
 x_range = 2000; %how far along x to go in same units as pixels (micron)
     %This will be divided into N steps
@@ -88,9 +88,6 @@ A_sub = sparse(npx*npy,N*M*P*Q);
 %preallocate 
 A_row_index = cell(M*N*P*Q,1);  %Row index fo
 A_vals = A_row_index;
-r_out = [];
-c_out = [];
-v_out = [];
 r_outc = cell(M*N*P*Q,1);
 c_outc = cell(M*N*P*Q,1);
 v_outc = cell(M*N*P*Q,1);
@@ -170,8 +167,8 @@ for mm = 1:max(1,M)
                     %zr = interp1(yg,diff_crop,yr);   %Interpolate surface
                 else
                     %zr = interp2(xg,yg,diff_crop,xr,yr);   %Interpolate surface
-                    Fxr = interp2(xg,yg,Fx_crop,xr,yr);  %Interpolate x gradient
-                    Fyr = interp2(xg,yg,Fy_crop,xr,yr);  %Interpolate y gradiet
+                    Fyr = interp2(xg,yg,Fx_crop',xr,yr);  %Interpolate x gradient
+                    Fxr = interp2(xg,yg,Fy_crop',xr,yr);  %Interpolate y gradiet
                 end               
                 
                 %Normal vectors. ith row is [x,y,z] normal at (xr(i),yr(i),zr(i)
@@ -349,10 +346,13 @@ for mm = 1:max(1,M)
         end         
     end
     ytend = toc(ytstart);
+    tleft = (M*N*P*Q-LF_index)/(N*P*Q)*ytend;
+    tmin = floor(tleft/60);
+    tsec = mod(tleft/60,tmin)*60;
     waitbar(LF_index/M/N/P/Q,h5,...
              [num2str(100*(LF_index)/(M*N*P*Q)),'% done. ',num2str(M*N*P*Q),...
              ' total, ',num2str(ytend),' seconds per pass. ~',...
-             num2str(M*N*P*Q-LF_index)*ytend,' seconds to go.'])        
+             num2str(tmin),':',num2str(tsec,'%.0f'),' to go.'])        
 end
 r_out = vertcat(r_outc{:});
 c_out = vertcat(c_outc{:});

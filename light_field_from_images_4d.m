@@ -1,41 +1,72 @@
 ntheta = 5;
 nphi = 5;
-nx = 50;
-ny = 50;
-xstart = 740;
-ystart = 210;
-
+nx = 100;
+ny = 100;
+xstart = 690;
+ystart = 160;
 cols = xstart:xstart+nx-1;
 rows = ystart:ystart+ny-1;
 clf
 
-lf = zeros(ntheta,npix,3);
+
 figure(5),clf
 count = 0;
 a = zeros(nx,ny,nphi,ntheta);
+r = a;
+g = a;
+b = a;
 a_test = a;
+
+monochrome = 0;  %1 for red, 2 green 3 blue
+
 for p = 1:nphi
     for q = 1:ntheta
         count = count+1;
-    %     a = imread(['/Users/nick.antipa/Documents/Light field/Data/dice/dice-',...
-    %         num2str(n,'%02d'),'.png']);
-        %a = imread(['/Users/nick.antipa/Documents/Light field/Data/xyzrgb_dragon/xyzrgb_dragon-',...
-            %num2str(n,'%02d'),'.png']);
-         im_in = imread(['/Users/nick.antipa/Documents/Light field/Data/DragonAndBunnies/DragonsAndBunnies_5x5_ap6.6/dragons-',...
-             num2str(count,'%02d'),'.png']);
-         a(:,:,q,p) = im_in(rows,cols,3);
-        %lf(n,:,:) = a(row,cols,:);
-        imagesc(a(:,:,q,p))
-        %a_test(:,:,q,p) = reshape(count*nx*ny:count*nx*ny+nx*ny-1,[ny,nx]);        
+        if monochrome
+        
+        %     a = imread(['/Users/nick.antipa/Documents/Light field/Data/dice/dice-',...
+        %         num2str(n,'%02d'),'.png']);
+            %a = imread(['/Users/nick.antipa/Documents/Light field/Data/xyzrgb_dragon/xyzrgb_dragon-',...
+                %num2str(n,'%02d'),'.png']);
+             im_in = imread(['/Users/nick.antipa/Documents/Light field/Data/DragonAndBunnies/DragonsAndBunnies_5x5_ap6.6/dragons-',...
+                 num2str(count,'%02d'),'.png']);
+             a(:,:,q,p) = im_in(rows,cols,monochrome);
+            %lf(n,:,:) = a(row,cols,:);
+            imagesc(a(:,:,q,p))
+            pause(1/24)
+            %a_test(:,:,q,p) = reshape(count*nx*ny:count*nx*ny+nx*ny-1,[ny,nx]);
+        else
+            
+             im_in = imread(['/Users/nick.antipa/Documents/Light field/Data/DragonAndBunnies/DragonsAndBunnies_5x5_ap6.6/dragons-',...
+                num2str(count,'%02d'),'.png']);
+            r(:,:,q,p) = im_in(rows,cols,1);
+            g(:,:,q,p) = im_in(rows,cols,2);
+            b(:,:,q,p) = im_in(rows,cols,3);                
+            imagesc(uint8(cat(3,r(:,:,q,p),g(:,:,q,p),b(:,:,q,p))))
+            pause(1/24)
+        end
     end
 end
 
 %%
-lf = permute(a,[4,3,2,1]);
+if monochrome
+    lf = permute(a,[4,3,2,1]);
+else
+    lfr = permute(r,[4,3,2,1]);
+    lfg = permute(g,[4,3,2,1]);
+    lfb = permute(b,[4,3,2,1]);
+    save('./Output/dragon_bunny_100x100.mat','lfr','lfg','lfb');
+end
+
+%%
 figure()
 for n = 1:nx
     for m = 1:ny
-        lf_im((m-1)*nphi+1:m*nphi,(n-1)*ntheta+1:n*ntheta) = (lf(:,:,n,m));
+        if monochrome
+            lf_im((m-1)*nphi+1:m*nphi,(n-1)*ntheta+1:n*ntheta) = (lf(:,:,n,m));
+        elseif monochrome
+            
+        end
     end
 end
 imagesc(lf_im)

@@ -4,16 +4,19 @@
 
 monochrome = 0;   %1 for red, 2 for green, 3 for blue, 0 for color
 %A_in = load('./A_sub_no_diffuser_16x300_10um_z0_228um.mat');
-A_in = load('./A_sub_50_50_5_5_1e4_250x250.mat');
-nsx = 250;
-nsy = 250;
-nx = 50;
-ny = 50;
+%A_in = load('./A_sub_50_50_5_5_1e4_250x250.mat');
+A_in = load('./A_sub_100_100_5_5_500_500.mat');
+
+nsx = 1000;
+nsy = 1000;
+nx = 100;
+ny = 100;
 ntheta = 5;
 nphi = 5;
 A_sub1 = A_in.A_sub;
 clear A_in
 A_sub1 = A_sub1./mean(sum(A_sub1,1));   %Normalize A matrix
+%%
 lambda = .0002;    %regularization
 noise = .005;  %Sensor noise2
 col = {'red','green','blue'};
@@ -43,10 +46,16 @@ else
     sensor = zeros(nsx,nsy,3);
     recovered_reshaped = cell(1,3);
     lf_final = zeros(ny*nphi,nx*ntheta,3);
+    in = load('./Output/dragon_bunny_100x100.mat');
     for n = 1:3
-        in = load(['./dragon_bunny_50_50_5_5_',col{n},'.mat']);
-        lf = in.lf;
-        clear in
+        if n == 1
+            lf = in.lfr;
+        elseif n == 2
+            lf = in.lfg;
+        else
+            lf = in.lfb;
+        end
+        
         sensor_mono = A_sub1 * lf(:);
         set(0,'CurrentFigure',h5)
         imagesc(sensor_reshaped);
@@ -82,7 +91,7 @@ title('full recovered light field')
 
 %%
 count = 0;
-filename = 'dragon_bunny_animation';
+filename = './Output/dragon_bunny_animation_100x100';
 for n = 1:nphi
     for m = 1:ntheta
         count = count+1;
