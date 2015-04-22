@@ -1,13 +1,13 @@
 ntheta = 5;
 nphi = 5;
-nx = 100;
-ny = 100;
-xstart = 690;
-ystart = 160;
+nx = 50;
+ny = 50;
+xstart = 740;
+ystart = 210;
 cols = xstart:xstart+nx-1;
 rows = ystart:ystart+ny-1;
 clf
-
+save_gif=0;
 
 figure(5),clf
 count = 0;
@@ -18,7 +18,7 @@ b = a;
 a_test = a;
 
 monochrome = 0;  %1 for red, 2 green 3 blue
-
+h8 = figure(8),clf
 for p = 1:nphi
     for q = 1:ntheta
         count = count+1;
@@ -49,13 +49,16 @@ for p = 1:nphi
 end
 
 %%
+
+str = input('Output mat file name: ','s')
+filename = ['./Output/',str,'.mat'] 
 if monochrome
     lf = permute(a,[4,3,2,1]);
 else
     lfr = permute(r,[4,3,2,1]);
     lfg = permute(g,[4,3,2,1]);
     lfb = permute(b,[4,3,2,1]);
-    save('./Output/dragon_bunny_100x100.mat','lfr','lfg','lfb');
+    save(filename,'lfr','lfg','lfb');
 end
 
 %%
@@ -64,12 +67,20 @@ for n = 1:nx
     for m = 1:ny
         if monochrome
             lf_im((m-1)*nphi+1:m*nphi,(n-1)*ntheta+1:n*ntheta) = (lf(:,:,n,m));
-        elseif monochrome
-            
+        else
+            for p = 1:3
+                if p == 1
+                    lf_im((m-1)*nphi+1:m*nphi,(n-1)*ntheta+1:n*ntheta,p) = uint8(lfr(:,:,n,m)); 
+                elseif p == 2
+                    lf_im((m-1)*nphi+1:m*nphi,(n-1)*ntheta+1:n*ntheta,p) = uint8(lfg(:,:,n,m)); 
+                else
+                    lf_im((m-1)*nphi+1:m*nphi,(n-1)*ntheta+1:n*ntheta,p) = uint8(lfb(:,:,n,m)); 
+                end
+            end
         end
     end
 end
-imagesc(lf_im)
+imagesc(uint8(lf_im))
 %axis([165 220 115 170])
 %%
 index = 0;
@@ -84,20 +95,29 @@ for mm = 1:ny
     end
 end
 %%
+if save_gif
+    str = input('Output file name: ','s')
+    filename = ['./Output/',str,'.gif'] 
+end
+
+%%
 count = 0;
-filename = 'dragon_bunny_animation_original.gif';
+set(0,'CurrentFigure',h8)
 for n = 1:nphi
     for m = 1:ntheta
         count = count+1;
-        imagesc(uint8(lf_im_rgb(n:5:end,m:5:end,:)))
-        [imind,cm] = rgb2ind(uint8(lf_im_rgb(n:5:end,m:5:end,:)),256);
-          if count == 1;
+        imagesc(uint8(lf_im(n:5:end,m:5:end,:)))
+        
+        [imind,cm] = rgb2ind(uint8(lf_im(n:5:end,m:5:end,:)),256);
+        if save_gif
+            if count == 1;
               imwrite(imind,cm,filename,'gif', 'Loopcount',inf);
-          else
+            else
               imwrite(imind,cm,filename,'gif','WriteMode','append');
-          end
+            end
+        end
         axis image
-        pause(1/7)
+        pause(1/15)
     end
 end
 

@@ -18,19 +18,19 @@ px = mean(diff(x)); %diffuser "pixel" size in um/pixel
 vis = 0;
 vis_prop = 0;
 save_prop = 0;
-vis_sensor = 0;
+vis_sensor = 1;
 %Range and step size for propagation movie
-zmax = 200;
-zstep = 50;
+zmax = 1000;
+zstep = 10;
 
 %Setup tracing grid
 M = 100;   %number of Y points use 1 for 1d case
 N = 100; % number of X points  
-P = 5; %number of phi points (angle in y (M) direction)   use 1 for 1d
-Q = 5; %number of theta points (angle in x direction)
-nrays = 5e4;
+P = 1; %number of phi points (angle in y (M) direction)   use 1 for 1d
+Q = 1; %number of theta points (angle in x direction)
+nrays = 5e6;
 
-x_range = 2000; %how far along x to go in same units as pixels (micron)
+x_range = 1000; %how far along x to go in same units as pixels (micron)
     %This will be divided into N steps
 x_idx = (x-min(x))/px;   %x vector as index
 range_idx = floor(x_range/px);
@@ -40,7 +40,7 @@ if dx_idx<1
 end
     
 
-y_range = 2000;   %in M steps. Use 0 for 1d.
+y_range = 1000;   %in M steps. Use 0 for 1d.
 y_idx = (y-min(y))/px;   %x vector as index
 range_idy = floor(y_range/px);
 dy_idx = floor(y_range/M/px);
@@ -65,8 +65,8 @@ z0=80;
 %ph_range = 1/16;
 %th_range = 10; %how far in angle to go in degrees
     %Divided into P steps.
-ph_range = 10;
-th_range = 10;
+ph_range = 1;
+th_range = 1;
 
 if y_range==0
     npy = 1;
