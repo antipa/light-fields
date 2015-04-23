@@ -18,17 +18,17 @@ px = mean(diff(x)); %diffuser "pixel" size in um/pixel
 vis = 0;
 vis_prop = 0;
 save_prop = 0;
-vis_sensor = 1;
+vis_sensor = 0;
 %Range and step size for propagation movie
 zmax = 1000;
 zstep = 10;
 
 %Setup tracing grid
 M = 100;   %number of Y points use 1 for 1d case
-N = 100; % number of X points  
-P = 1; %number of phi points (angle in y (M) direction)   use 1 for 1d
-Q = 1; %number of theta points (angle in x direction)
-nrays = 5e6;
+N = 100; % number of X points
+P = 5; %number of phi points (angle in y (M) direction)   use 1 for 1d
+Q = 5; %number of theta points (angle in x direction)
+nrays = 5e4;
 
 x_range = 1000; %how far along x to go in same units as pixels (micron)
     %This will be divided into N steps
@@ -49,8 +49,8 @@ if dy_idx<1
 end
 
 %Setup sensor parameters for a sensor that is the same size as the diffuser
-npx =1000;
-npy = 1000;
+npx =500;
+npy = 500;
 
 ssize = [max(y_range,1), max(x_range,1)];   %Sensor size in microns
 dpx = ssize(2)/npx;
@@ -65,8 +65,8 @@ z0=80;
 %ph_range = 1/16;
 %th_range = 10; %how far in angle to go in degrees
     %Divided into P steps.
-ph_range = 1;
-th_range = 1;
+ph_range = 10;
+th_range = 10;
 
 if y_range==0
     npy = 1;
@@ -79,11 +79,6 @@ if x_range==0
 end
 dph = ph_range/P;
 dth = th_range/Q;
-
-
-A_sub = sparse(npx*npy,N*M*P*Q);
-
- 
 
 %preallocate 
 A_row_index = cell(M*N*P*Q,1);  %Row index fo
@@ -143,8 +138,11 @@ for mm = 1:max(1,M)
         Fy_crop = Fy(nidx,midx);
         for pp = 1:P
             ph = dph*(rand(nrays,1)-pp+P/2);    %Random phi points
-            for qq = 1:Q
+            LF_index_start = P*Q*N*(mm-1)+P*Q*(nn-1)+Q*(pp-1);
+            parfor LF_index = LF_index_start+1:LF_index_start+Q
+   
                 tstart = tic;
+                qq = LF_index-LF_index_start;
                 th = dth*(rand(nrays,1)-qq+Q/2); %random theta points
 
                 %Generate random (x,y) positions within dx_idx*px wide
@@ -217,7 +215,7 @@ for mm = 1:max(1,M)
                 if nnz(gatherer)>1 
 
                                     %make light field index
-                    LF_index = P*Q*N*(mm-1)+P*Q*(nn-1)+Q*(pp-1)+qq;
+                    %LF_index = P*Q*N*(mm-1)+P*Q*(nn-1)+Q*(pp-1)+qq;
                     %[A_row_index{LF_index}, A_vals{LF_index}] = find(gatherer(:));                    
                     %A_sub(:,LF_index) = gatherer(:);
                     %A_sub = build_A_matrix(A_sub,gatherer,LF_index);
@@ -345,6 +343,7 @@ for mm = 1:max(1,M)
             end
         end         
     end
+    LF_index = LF_index_start+Q;
     ytend = toc(ytstart);
     tleft = (M*N*P*Q-LF_index)/(N*P*Q)*ytend;
     tmin = floor(tleft/60);
@@ -370,4 +369,3 @@ profile viewer
     
     %propagate to output plane
     
-    %
