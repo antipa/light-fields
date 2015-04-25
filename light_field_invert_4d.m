@@ -2,20 +2,24 @@
 %in = load('./dice_137_50-350_color.mat');
 %in = load('./dragon_125_200-500_color.mat');
 
-monochrome = 1;   %1 for red, 2 for green, 3 for blue, 0 for color
+monochrome = 0;   %1 for red, 2 for green, 3 for blue, 0 for color
 %A_in = load('./A_sub_no_diffuser_16x300_10um_z0_228um.mat');
 %A_in = load('./A_sub_50_50_5_5_1e4_250x250.mat');
-A_in = load('./Output/A_sub_50_50_5_5_5e4_1_deg_CORRECT.mat');
+A_in = load('./Output/A_sub_100_100_5_5_5e4_CORRECT_1deg.mat');
+%A_in_inv = load('./Output/A_sub_100_100_5_5_5e4_CORRECT2.mat');
 save_file = 0;
 nsx = 500;
 nsy = 500;
-nx = 50;
-ny = 50;
+nx = 100;
+ny = 100;
 ntheta = 5;
 nphi = 5;
 A_sub1 = A_in.A_sub;
+%A_sub_inv = A_in_inv.A_sub;
 clear A_in
+clear A_in_inv
 A_sub1 = A_sub1./mean(sum(A_sub1,1));   %Normalize A matrix
+%A_sub_inv = A_sub_inv./mean(sum(A_sub_inv,1));
 %%
 lambda = .0005;    %regularization
 noise = .0005;  %Sensor noise2
@@ -52,29 +56,29 @@ else
     sensor = zeros(nsx,nsy,3);
     recovered_reshaped = cell(1,3);
     lf_final = zeros(ny*nphi,nx*ntheta,3);
-    in = load('./Output/dragon_bunny_50x50.mat')
+    in = load('./Output/dragon_bunny_100x100.mat');
     set(0,'CurrentFigure',h5)
     AtA = A_sub1'*A_sub1;
     AtA_r = (AtA+lambda*speye(size(AtA)));
+    lf_cell = cell(3,1);
+    lf_cell{1} = in.lfr;
+    lf_cell{2} = in.lfg;
+    lf_cell{3} = in.lfb;
+    tic
     for n = 1:3
-        if n == 1
-            lf = in.lfr;
-        elseif n == 2
-            lf = in.lfg;
-        else
-            lf = in.lfb;
-        end
+
         
-        sensor_mono = A_sub1 * lf(:);
+        sensor_mono = A_sub1 * lf_cell{n}(:);
         
         intens_noisy = sensor_mono + abs(noise*max(sensor_mono)*randn(size(sensor_mono)));
         sensor(:,:,n) = reshape(intens_noisy,[nsx,nsy]);
-        tic
+        
         recovered = AtA_r\(A_sub1'*(intens_noisy));
-        toc
+        
         recovered_reshaped{n} = reshape(recovered,[nphi,ntheta,nx,ny]);
     end
-    imagesc(uint8(sensor/.3));
+    toc
+    imagesc(uint8(sensor));
 end
 
 %%
