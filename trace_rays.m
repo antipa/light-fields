@@ -5,7 +5,7 @@
 profile on
 in = load('./Output/diffuser.mat');
 diffuser_in = in.filtered*50;
-diff_upsample = 0;
+diff_upsample = 0;   %Resample the surface
 x = in.x;
 if diff_upsample
     diffuser = imresize(diffuser_in,diff_upsample,'bicubic');
@@ -16,21 +16,21 @@ end
 y = x;
 px = mean(diff(x)); %diffuser "pixel" size in um/pixel
 vis = 0;
-vis_prop = 0;
+vis_prop = 1;
 save_prop = 0;
 vis_sensor = 0;
 %Range and step size for propagation movie
-zmax = 200;
-zstep = 10;
+zmax = 2000;
+zstep = 50;
 
 %Setup tracing grid
-M = 100;   %number of Y points use 1 for 1d case
-N = 100; % number of X points
-P = 5; %number of phi points (angle in y (M) direction)   use 1 for 1d
-Q = 5; %number of theta points (angle in x direction)
-nrays = 5e4;
+M = 1;   %number of Y points use 1 for 1d case
+N = 1; % number of X points
+P = 1; %number of phi points (angle in y (M) direction)   use 1 for 1d
+Q = 1; %number of theta points (angle in x direction)
+nrays = 5e6;
 
-x_range = 1000; %how far along x to go in same units as pixels (micron)
+x_range = 200; %how far along x to go in same units as pixels (micron)
     %This will be divided into N steps
 x_idx = (x-min(x))/px;   %x vector as index
 range_idx = floor(x_range/px);
@@ -40,7 +40,7 @@ if dx_idx<1
 end
     
 
-y_range = 1000;   %in M steps. Use 0 for 1d.
+y_range = 200;   %in M steps. Use 0 for 1d.
 y_idx = (y-min(y))/px;   %x vector as index
 range_idy = floor(y_range/px);
 dy_idx = floor(y_range/M/px);
@@ -49,8 +49,8 @@ if dy_idx<1
 end
 
 %Setup sensor parameters for a sensor that is the same size as the diffuser
-npx =500;
-npy = 500;
+npx =300;
+npy = 300;
 
 ssize = [max(y_range,1), max(x_range,1)];   %Sensor size in microns
 dpx = ssize(2)/npx;
@@ -59,14 +59,15 @@ xs = min(x):dpx:max(x);
 ys = xs;
 
 %z0 = 228.6;
-z0=80;
+z0=1900;
+%80 nominal
 
 
 %ph_range = 1/16;
 %th_range = 10; %how far in angle to go in degrees
     %Divided into P steps.
-ph_range = 1;
-th_range = 1;
+ph_range = .0001;
+th_range = .0001;
 
 if y_range==0
     npy = 1;
@@ -142,7 +143,7 @@ for mm = 1:max(1,M)
                 LF_index_start = P*Q*N*(mm-1)+P*Q*(nn-1);
         %LF_index_start = P*Q*N*(mm-1)+P*Q*(nn-1)+Q*(pp-1);
         
-        parfor LF_index = LF_index_start+1:LF_index_start+P*Q
+        for LF_index = LF_index_start+1:LF_index_start+P*Q
             
             pp = 1+mod(floor((LF_index-LF_index_start-1)/5),5);
             qq = 1+mod(LF_index-1-LF_index_start,5);
@@ -163,13 +164,19 @@ for mm = 1:max(1,M)
             if dy_idx==0         
                 Fxr = interp1(xg,Fx_crop,xr);  %Interpolate x gradient
                 Fyr = zeros(size(Fxr));
-                %zr = interp1(xg,diff_crop,xr);   %Interpolate surface
+                if vix
+                    zr = interp1(xg,diff_crop,xr);   %Interpolate surface
+                end
             elseif dx_idx==0
                 Fyr = interp1(yg,Fy_crop,yr);  %Interpolate x gradient                    
                 Fxr = zeros(size(Fyr));
-                %zr = interp1(yg,diff_crop,yr);   %Interpolate surface
+                if vis
+                    zr = interp1(yg,diff_crop,yr);   %Interpolate surface
+                end
             else
-                %zr = interp2(xg,yg,diff_crop,xr,yr);   %Interpolate surface
+                if vis
+                    zr = interp2(xg,yg,diff_crop,xr,yr);   %Interpolate surface
+                end
                 Fyr = interp2(xg,yg,Fx_crop',xr,yr);  %Interpolate x gradient
                 Fxr = interp2(xg,yg,Fy_crop',xr,yr);  %Interpolate y gradiet
             end               
@@ -222,8 +229,10 @@ for mm = 1:max(1,M)
                 [r_outc{LF_index}, c_outc{LF_index}, v_outc{LF_index}] = ...
                     build_A_matrix_sparse(gatherer,LF_index);
                 if vis_prop %animation to visualize propagation after refraction
-
-                    for z = 0:zstep:zmax
+                    count = 0;
+                    contrast = zeros(ceil(zmax/zstep)+1,1);
+                    for z = 0:zstep:ceil(zmax/zstep)*zstep
+                        
                         set(0,'CurrentFigure',h3)
                         yo = uyp*z+yr;
                         xo = uxp*z+xr; 
@@ -232,10 +241,10 @@ for mm = 1:max(1,M)
                         if nnz(gatherer1)>1
                             x_sensor = [0:npx-1]*dpx;
                             y_sensor = [0:npy-1]*dpy;
-                            xmin = xg(1)+nidx(1)*px-tand(th_range)*zmax;
-                            xmax = xg(end)+nidx(1)*px+tand(th_range)*zmax;
-                            ymin = yg(1)+midx(1)*px-tand(ph_range)*zmax;
-                            ymax = yg(end)+midx(1)*px+tand(ph_range)*zmax;
+                            xmin = round(xg(1)+nidx(1)*px-tand(th_range)*zmax);
+                            xmax = round(xg(end)+nidx(1)*px+tand(th_range)*zmax);
+                            ymin = round(yg(1)+midx(1)*px-tand(ph_range)*zmax);
+                            ymax = round(yg(end)+midx(1)*px+tand(ph_range)*zmax);
                             if dy_idx>1 && dx_idx>1
 
                                 imagesc(gatherer1,'XData',x_sensor,'YData',y_sensor)
@@ -255,6 +264,11 @@ for mm = 1:max(1,M)
                                 ' rays, \theta=',num2str(dth*(-qq+Q/2+.5)),...
                                 ' \phi=',num2str(dph*(-pp+P/2+.5))])
                             hold off
+%                             gcrop = full(gatherer1(midx,nidx));
+%                             count = count+1;
+%                             cmax = prctile(gcrop(:),.9);
+%                             cmin = prctile(gcrop(:),.1);
+%                             contrast(count) = (cmax-cmin)/(cmax+cmin);
                             pause(1/100)
                         end
                     end
