@@ -28,8 +28,8 @@ for p = 1:nphi
         %         num2str(n,'%02d'),'.png']);
             %a = imread(['/Users/nick.antipa/Documents/Light field/Data/xyzrgb_dragon/xyzrgb_dragon-',...
                 %num2str(n,'%02d'),'.png']);
-             im_in = imread(['/Users/nick.antipa/Documents/Light field/Data/DragonAndBunnies/DragonsAndBunnies_5x5_ap6.6/dragons-',...
-                 num2str(count,'%02d'),'.png']);
+             %im_in = imread(['/Users/nick.antipa/Documents/Light field/Data/DragonAndBunnies/DragonsAndBunnies_5x5_ap6.6/dragons-',...
+                 %num2str(count,'%02d'),'.png']);
              a(:,:,q,p) = im_in(rows,cols,monochrome);
             %lf(n,:,:) = a(row,cols,:);
             imagesc(a(:,:,q,p))

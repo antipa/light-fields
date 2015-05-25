@@ -5,7 +5,7 @@
 monochrome = 0;   %1 for red, 2 for green, 3 for blue, 0 for color
 %A_in = load('./A_sub_no_diffuser_16x300_10um_z0_228um.mat');
 %A_in = load('./A_sub_50_50_5_5_1e4_250x250.mat');
-A_in = load('./Output/A_sub_100_100_5_5_5e4_CORRECT_1deg.mat');
+A_in = load('./Output/A_sub_100_100_5_5_5e4_CORRECT3.mat')
 %A_in_inv = load('./Output/A_sub_100_100_5_5_5e4_CORRECT2.mat');
 save_file = 0;
 nsx = 500;
