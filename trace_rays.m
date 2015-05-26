@@ -59,14 +59,14 @@ xs = min(x):dpx:max(x);
 ys = xs;
 
 %z0 = 228.6;
-z0=160;
+z0=80;
 
 
 %ph_range = 1/16;
 %th_range = 10; %how far in angle to go in degrees
     %Divided into P steps.
-ph_range = .1;
-th_range = .1;
+ph_range = .2;
+th_range = .2;
 
 if y_range==0
     npy = 1;
