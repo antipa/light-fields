@@ -58,10 +58,11 @@ dpy = ssize(1)/npy;
 xs = min(x):dpx:max(x);
 ys = xs;
 
+%where image is most in focus?
 %z0 = 228.6;
 z0=80;
 
-
+%what are ph and th ranges?
 %ph_range = 1/16;
 %th_range = 10; %how far in angle to go in degrees
     %Divided into P steps.
@@ -80,7 +81,7 @@ end
 dph = ph_range/P;
 dth = th_range/Q;
 
-
+%creates sparse form of matrix
 A_sub = sparse(npx*npy,N*M*P*Q);
 
  
@@ -93,10 +94,10 @@ c_outc = cell(M*N*P*Q,1);
 v_outc = cell(M*N*P*Q,1);
 
 %Setup gradients
-if dy_idx==0
+if dy_idx == 0
     Fx = gradient(diffuser);
     Fy = zeros(size(Fx));
-elseif dx_idx==0
+elseif dx_idx == 0
     Fy = gradient(diffuser);
     Fx = zeros(size(Fy));
 else
