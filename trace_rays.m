@@ -42,7 +42,7 @@ end
     
 
 y_range = 1000;   %in M steps. Use 0 for 1d.
-y_idx = (y-min(y))/px;   %x vector as index
+y_idx = (y-min(y))/px;   %x vector as index 
 range_idy = floor(y_range/px);
 dy_idx = floor(y_range/M/px);
 if dy_idx<1
