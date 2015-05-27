@@ -4,7 +4,7 @@
 %Make sensor size dynamic
 profile on
 in = load('./Output/diffuser.mat');
-diffuser_in = in.filtered*50;
+diffuser_in = in.filtered*100;
 diff_upsample = 0;
 x = in.x;
 if diff_upsample
@@ -15,20 +15,21 @@ else
 end
 y = x;
 px = mean(diff(x)); %diffuser "pixel" size in um/pixel
-vis = 0;
+vis = 1;
 vis_prop = 0;
 save_prop = 0;
-vis_sensor = 1;
+vis_sensor = 0;
 %Range and step size for propagation movie
-zmax = 1000;
-zstep = 10;
+zmax = 100;
+zstep = 20;
+index = 1.5;
 
 %Setup tracing grid
-M = 100;   %number of Y points use 1 for 1d case
-N = 100; % number of X points  
-P = 1; %number of phi points (angle in y (M) direction)   use 1 for 1d
-Q = 1; %number of theta points (angle in x direction)
-nrays = 5e6;
+M = 10;   %number of Y points use 1 for 1d case
+N = 10; % number of X points  
+P = 5; %number of phi points (angle in y (M) direction)   use 1 for 1d
+Q = 5; %number of theta points (angle in x direction)
+nrays = 1e2;
 
 x_range = 1000; %how far along x to go in same units as pixels (micron)
     %This will be divided into N steps
@@ -65,8 +66,8 @@ z0=80;
 %ph_range = 1/16;
 %th_range = 10; %how far in angle to go in degrees
     %Divided into P steps.
-ph_range = 1;
-th_range = 1;
+ph_range = 45;
+th_range = 45;
 
 if y_range==0
     npy = 1;
@@ -78,12 +79,7 @@ if x_range==0
     th_range = 0;
 end
 dph = ph_range/P;
-dth = th_range/Q;
-
-
-A_sub = sparse(npx*npy,N*M*P*Q);
-
- 
+dth = th_range/Q; 
 
 %preallocate 
 A_row_index = cell(M*N*P*Q,1);  %Row index fo
@@ -124,26 +120,27 @@ h5 = waitbar(0,'beginning');
 [Xg, Yg] = meshgrid(-dx_idx*px/2:px:dx_idx*px/2,-dx_idx*px/2:px:dx_idx*px/2);
 tstart1 = tic;
 
-for mm = 1:max(1,M)
+for mm = 1:max(1,M) %y index
+    %Starts the clock for time estimates
     ytstart = tic;
     %Get indices of region in y direction
     midx = (((mm-1)*dy_idx+1):(mm*dy_idx+1))';  
     %Generate y vector in physical units in local coordinates 
         %(i.e. origin shifts wich each new region
-    yg = px*(midx-midx(1));     
+    yg = px*(midx-midx(1));     %local coordinates
     %yr = dx_idx*px*(rand(nrays,1));
-    for nn = 1:max(1,N)
+    for nn = 1:max(1,N)     %x index
         nidx = (((nn-1)*dx_idx+1):(nn*dx_idx+1))';
-        xg = (nidx-nidx(1))*px;
+        xg = (nidx-nidx(1))*px;  %Local coordinates
         diff_crop = diffuser(midx,nidx);
         
         [NIDX, MIDX] = meshgrid(nidx,midx);  
                         
         Fx_crop = Fx(nidx,midx);
         Fy_crop = Fy(nidx,midx);
-        for pp = 1:P
+        for pp = 1:P    %Phi index
             ph = dph*(rand(nrays,1)-pp+P/2);    %Random phi points
-            for qq = 1:Q
+            for qq = 1:Q    %Theta index
                 tstart = tic;
                 th = dth*(rand(nrays,1)-qq+Q/2); %random theta points
 
@@ -157,22 +154,32 @@ for mm = 1:max(1,M)
                 %interpolation within gradient
                 
                 %Get z and surface normal at each random (xr(i),yr(i)) pair
+                %If we are in the 2d case (x_range>1, y_range>1)
                 if dy_idx==0         
                     Fxr = interp1(xg,Fx_crop,xr);  %Interpolate x gradient
                     Fyr = zeros(size(Fxr));
-                    %zr = interp1(xg,diff_crop,xr);   %Interpolate surface
+                    
+                    %Run this in the debugging case, but not in parfor
+                    zr = interp1(xg,diff_crop,xr);   %Interpolate surface
                 elseif dx_idx==0
                     Fyr = interp1(yg,Fy_crop,yr);  %Interpolate x gradient                    
                     Fxr = zeros(size(Fyr));
-                    %zr = interp1(yg,diff_crop,yr);   %Interpolate surface
+                    
+                    %Run this in the debugging case, but not in parfor
+                    zr = interp1(yg,diff_crop,yr);   %Interpolate surface
                 else
-                    %zr = interp2(xg,yg,diff_crop,xr,yr);   %Interpolate surface
+                    zr = interp2(xg,yg,diff_crop,xr,yr);   %Interpolate surface
                     Fyr = interp2(xg,yg,Fx_crop',xr,yr);  %Interpolate x gradient
+                    
+                    %Run this in the debugging case, but not in parfor
                     Fxr = interp2(xg,yg,Fy_crop',xr,yr);  %Interpolate y gradiet
                 end               
                 
+                
+                %Refraction starts here ---------------------
+                
                 %Normal vectors. ith row is [x,y,z] normal at (xr(i),yr(i),zr(i)
-                normals_norm = sqrt(Fxr.^2+Fyr.^2+1);
+                normals_norm = sqrt(Fxr.^2+Fyr.^2+1);   %Length of each vector
                 normals = [-Fxr./normals_norm,-Fyr./normals_norm,ones(size(Fxr))./normals_norm];
 
                 %Convert theta and phi from degrees into vector representation
@@ -189,7 +196,7 @@ for mm = 1:max(1,M)
                
 
                 %Calculate magnitude of incident angle I 
-                index = 1.5;
+                
                 I = acos(sum(normals.*[uxn, uyn, uzn],2));
                 %Use snell's law to calculate Ip
                 index_p = 1;
@@ -202,9 +209,15 @@ for mm = 1:max(1,M)
                 uyp = 1/index_p * (index*uyn+Gamma.*normals(:,2));
                 uzp = 1/index_p * (index*uzn+Gamma.*normals(:,3));
                 
+                %End refraction-------------
+                
                 %propagate to output plane by a distance z
-                yo = uyp*z0+yr;
-                xo = uxp*z0+xr; 
+                %Possible mistake in previous code: didn't divide by uzp.
+                %Not an issue for small angles.
+                yo = uyp*z0./uzp+yr;
+                xo = uxp*z0./uzp+xr; 
+                
+                %End propagation ------------------
                 
                 %Gather rays on sensor
                 
@@ -231,18 +244,22 @@ for mm = 1:max(1,M)
 
                         for z = 0:zstep:zmax
                             set(0,'CurrentFigure',h3)
-                            yo = uyp*z+yr;
-                            xo = uxp*z+xr; 
+                            yo = uyp./uzp*z+yr;
+                            xo = uxp./uzp*z+xr;
                             gatherer1 = gather_rays_nohist(xo,yo,npx,npy,dpx,dpy,nidx(1),midx(1),px);
 
                             if nnz(gatherer1)>1
+                                %Sensor coordinates
                                 x_sensor = [0:npx-1]*dpx;
                                 y_sensor = [0:npy-1]*dpy;
+                                %Axis bounds for plotting
                                 xmin = xg(1)+nidx(1)*px-tand(th_range)*zmax;
                                 xmax = xg(end)+nidx(1)*px+tand(th_range)*zmax;
                                 ymin = yg(1)+midx(1)*px-tand(ph_range)*zmax;
                                 ymax = yg(end)+midx(1)*px+tand(ph_range)*zmax;
-                                if dy_idx>1 && dx_idx>1
+                                
+                                %Deals with 1d vs 2d plotting
+                                if dy_idx>1 && dx_idx>1 %2d case
 
                                     imagesc(gatherer1,'XData',x_sensor,'YData',y_sensor)
                                     hold on
@@ -257,7 +274,7 @@ for mm = 1:max(1,M)
                                     xlim([ymin ymax])
                                     xlabel('\mum')
                                 end
-                                title(['indensity at z=',num2str(z),' for ',num2str(nrays),...
+                                title(['intensity at z=',num2str(z),' for ',num2str(nrays),...
                                     ' rays, \theta=',num2str(dth*(-qq+Q/2+.5)),...
                                     ' \phi=',num2str(dph*(-pp+P/2+.5))])
                                 hold off
@@ -299,7 +316,7 @@ for mm = 1:max(1,M)
                 end
                 
 %               %% Visualization
-                if vis
+                if vis   %THis is less important
                     %Calculate global x and y index locations for rays
                     scl = 1;
                     nnr = xr/px+nidx(1);
