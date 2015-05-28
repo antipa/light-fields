@@ -18,7 +18,7 @@ px = mean(diff(x)); %diffuser "pixel" size in um/pixel
 vis = 0;
 vis_prop = 1;
 save_prop = 0;
-vis_sensor = 1;
+vis_sensor = 0;
 %Range and step size for propagation movie
 zmax = 1000;
 zstep = 10;
@@ -175,9 +175,6 @@ for mm = 1:max(1,M)
                 
                 %Refraction starts here ---------------------
                 [uxp, uyp, uzp] = refraction(Fxr, Fyr, th, ph, index);
-                uxp = uxp;
-                uyp = uyp;
-                uzp = uzp;
                 
 %                 %Normal vectors. ith row is [x,y,z] normal at (xr(i),yr(i),zr(i)
 %                 normals_norm = sqrt(Fxr.^2+Fyr.^2+1);   %Length of each vector
@@ -209,7 +206,7 @@ for mm = 1:max(1,M)
 %                 uxp = 1/index_p * (index*uxn+Gamma.*normals(:,1));
 %                 uyp = 1/index_p * (index*uyn+Gamma.*normals(:,2));
 %                 uzp = 1/index_p * (index*uzn+Gamma.*normals(:,3));
-%                 
+                
                 %End refraction-------------
                 
                 %propagate to output plane by a distance z
