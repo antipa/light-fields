@@ -3,8 +3,8 @@
 %Notes:
 %Make sensor size dynamic
 profile on
-in = load('./Output/diffuser.mat');
-diffuser_in = in.filtered*50;
+in = load('../Output/diffuser.mat');
+diffuser_in = in.filtered*100;
 diff_upsample = 0;
 x = in.x;
 if diff_upsample
