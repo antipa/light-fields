@@ -4,7 +4,7 @@
 %Make sensor size dynamic
 profile on
 in = load('../Output/diffuser.mat');
-diffuser_in = in.filtered*100;
+diffuser_in = in.filtered*50;
 diff_upsample = 0;
 x = in.x;
 if diff_upsample
@@ -16,7 +16,7 @@ end
 y = x;
 px = mean(diff(x)); %diffuser "pixel" size in um/pixel
 vis = 0;
-vis_prop = 1;
+vis_prop = 0;
 save_prop = 0;
 vis_sensor = 0;
 %Range and step size for propagation movie
@@ -24,13 +24,13 @@ zmax = 1000;
 zstep = 10;
 
 %Setup tracing grid
-M = 100;   %number of Y points use 1 for 1d case
-N = 100; % number of X points  
-P = 1; %number of phi points (angle in y (M) direction)   use 1 for 1d
-Q = 1; %number of theta points (angle in x direction)
+M = 10;   %number of Y points use 1 for 1d case
+N = 10; % number of X points  
+P = 3; %number of phi points (angle in y (M) direction)   use 1 for 1d
+Q = 4; %number of theta points (angle in x direction)
 nrays = 5e6;
 
-x_range = 1000; %how far along x to go in same units as pixels (micron)
+x_range = 300; %how far along x to go in same units as pixels (micron)
     %This will be divided into N steps
 x_idx = (x-min(x))/px;   %x vector as index
 range_idx = floor(x_range/px);
@@ -60,14 +60,14 @@ ys = xs;
 
 %where image is most in focus?
 %z0 = 228.6;
-z0=80;
+z0=200;
 
 %what are ph and th ranges?
 %ph_range = 1/16;
 %th_range = 10; %how far in angle to go in degrees
     %Divided into P steps.
-ph_range = 1;
-th_range = 1;
+ph_range = 30;
+th_range = 30;
 
 if y_range==0
     npy = 1;
@@ -174,44 +174,44 @@ for mm = 1:max(1,M)
                 
                 
                 %Refraction starts here ---------------------
-                [uxp, uyp, uzp] = refraction(Fxr, Fyr, th, ph, index);
+%                 [uxp, uyp, uzp] = refraction(Fxr, Fyr, th, ph, index);
                 
-%                 %Normal vectors. ith row is [x,y,z] normal at (xr(i),yr(i),zr(i)
-%                 normals_norm = sqrt(Fxr.^2+Fyr.^2+1);   %Length of each vector
-%                 normals = [-Fxr./normals_norm,-Fyr./normals_norm,ones(size(Fxr))./normals_norm];
-% 
-%                 %Convert theta and phi from degrees into vector representation
-%                 ux = tand(th);
-%                 uy = tand(ph);
-%                 uz = ones(size(ux));
-%                 norms = sqrt(ux.^2+uy.^2+1);
-%                 
-%                 %Normalize (probably not necessary?) to get direction
-%                 %cosines
-%                 uxn = ux./norms;
-%                 uyn = uy./norms;
-%                 uzn = uz./norms;
-%                
-% 
-%                 %Calculate magnitude of incident angle I 
-%                 
-%                 I = acos(sum(normals.*[uxn, uyn, uzn],2));
-%                 %Use snell's law to calculate Ip
-%                 index_p = 1;
-%                 Ip = asin(index/index_p*sin(I));
-%                 %define gamma = n'cosI'-ncosI
-%                 Gamma = index_p*cos(Ip)-index*cos(I);
-% 
-%                 %Calculate new direction cosines
-%                 uxp = 1/index_p * (index*uxn+Gamma.*normals(:,1));
-%                 uyp = 1/index_p * (index*uyn+Gamma.*normals(:,2));
-%                 uzp = 1/index_p * (index*uzn+Gamma.*normals(:,3));
+                %Normal vectors. ith row is [x,y,z] normal at (xr(i),yr(i),zr(i)
+                normals_norm = sqrt(Fxr.^2+Fyr.^2+1);   %Length of each vector
+                normals = [-Fxr./normals_norm,-Fyr./normals_norm,ones(size(Fxr))./normals_norm];
+
+                %Convert theta and phi from degrees into vector representation
+                ux = tand(th);
+                uy = tand(ph);
+                uz = ones(size(ux));
+                norms = sqrt(ux.^2+uy.^2+1);
+                
+                %Normalize (probably not necessary?) to get direction
+                %cosines
+                uxn = ux./norms;
+                uyn = uy./norms;
+                uzn = uz./norms;
+               
+
+                %Calculate magnitude of incident angle I 
+                
+                I = acos(sum(normals.*[uxn, uyn, uzn],2));
+                %Use snell's law to calculate Ip
+                index_p = 1;
+                Ip = asin(index/index_p*sin(I));
+                %define gamma = n'cosI'-ncosI
+                Gamma = index_p*cos(Ip)-index*cos(I);
+
+                %Calculate new direction cosines
+                uxp = 1/index_p * (index*uxn+Gamma.*normals(:,1));
+                uyp = 1/index_p * (index*uyn+Gamma.*normals(:,2));
+                uzp = 1/index_p * (index*uzn+Gamma.*normals(:,3));
                 
                 %End refraction-------------
                 
                 %propagate to output plane by a distance z
-                yo = uyp*z0+yr;
-                xo = uxp*z0+xr; 
+                yo = uyp./uzp*z0+yr;
+                xo = uxp./uzp*z0+xr; 
                 
                 %Gather rays on sensor
                 
@@ -238,8 +238,8 @@ for mm = 1:max(1,M)
 
                         for z = 0:zstep:zmax
                             set(0,'CurrentFigure',h3)
-                            yo = uyp*z+yr;
-                            xo = uxp*z+xr; 
+                            yo = uyp*z./uzp+yr;
+                            xo = uxp*z./uzp+xr; 
                             gatherer1 = gather_rays_nohist(xo,yo,npx,npy,dpx,dpy,nidx(1),midx(1),px);
 
                             if nnz(gatherer1)>1
