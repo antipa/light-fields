@@ -1,36 +1,6 @@
-%Settings--------------
-%I made the diffuser strength a variable.
-useParfor = false; %must make vis_prop = 0
-strength = 50;
-diff_upsample = 0;
-vis = 0;
-vis_prop = 0;
-save_prop = 0;
-vis_sensor = 1;
-%Range and step size for propagation movie
-zmax = 1000;
-zstep = 10;
-%Setup tracing grid
-M = 10;   %number of Y points use 1 for 1d case
-N = 10; % number of X points
-P = 3; %number of phi points (angle in y (M) direction)   use 1 for 1d
-Q = 4; %number of theta points (angle in x direction)
-nrays = 5e6;
-x_range = 300; %how far along x to go in same units as pixels (micron)
-%This will be divided into N steps
-y_range = 1000;   %in M steps. Use 0 for 1d.
-%Setup sensor parameters for a sensor that is the same size as the diffuser
-npx =1000;
-npy = 1000;
-%z0 = 228.6;
-z0=200;
-%ph_range = 1/16;
-%th_range = 10; %how far in angle to go in degrees
-%Divided into P steps.
-ph_range = 30;
-th_range = 30;
-
-%End of Settings---------------
+%also added index variable
+%gets data from settings.m
+settings;
 
 %get diffuser surface
 
