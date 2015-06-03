@@ -1,9 +1,9 @@
 %also added index variable
-%gets data from settings.m
+%gets data from tracerays_settings.m
 try
-    settings;
+    tracerays_settings;
 catch exception
-   display('Error loading settings. Read instructions in settings.m.template.'); 
+   display('Error loading settings. Read instructions in tracerays_settings.m.template.'); 
 end
 
 %get diffuser surface
