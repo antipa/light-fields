@@ -1,6 +1,10 @@
 %also added index variable
 %gets data from settings.m
-settings;
+try
+    settings;
+catch exception
+   display('Error loading settings. Read instructions in settings.m.template.'); 
+end
 
 %get diffuser surface
 
