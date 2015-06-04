@@ -29,3 +29,5 @@ Gamma = index_p*cos(Ip)-index*cos(I);
 uxp = 1/index_p * (index*uxn+Gamma.*normals(:,1));
 uyp = 1/index_p * (index*uyn+Gamma.*normals(:,2));
 uzp = 1/index_p * (index*uzn+Gamma.*normals(:,3));
+
+end
