@@ -1,4 +1,4 @@
-function gatherer = gather_rays(xo,yo,npx,npy,dpx,dpy,offsetx,offsety,px)
+function gatherer = gather_rays_nohist(xo,yo,npx,npy,dpx,dpy,offsetx,offsety,px)
 nidx = offsetx;
 midx = offsety;
 %bin outputs at sensor pixels in local physical units
