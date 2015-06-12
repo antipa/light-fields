@@ -1,34 +1,35 @@
-pixelSize = 1; %not sure how to incorporate pixel size
-sensorSize = 2; %sensor is a square, given in pixels
+pixelSize = 1; %pixel size in physical units
+sensorSizeX = 10; %given in pixels
+sensorSizeY = 0;
 thetaSpread = 10; %in degrees
 phiSpread = 0;
 nrays = 100;
 
 %generate random (x,y) positions within each pixel
 %index (0,0) is in bottom left corner of the sensor
-raysPerPixel = round(nrays./(sensorSize)^2);
+raysPerPixel = round(nrays./sensorSizeX);
 xr = [];
 yr = [];
 currentPixel = 1;
 pixelIndex = [];
 
 %should preallocate xr, yr, and pixelIndex for more efficiency
-for i = 0:sensorSize - 1
-    for j = 0:sensorSize - 1
-        xr = [xr; rand(raysPerPixel,1) + i];
-        yr = [yr; rand(raysPerPixel,1) + j];
+for i = 0:sensorSizeX - 1
+%     for j = 0:sensorSizeY - 1
+        xr = [xr; (rand(raysPerPixel,1) + i)*pixelSize];
+%         yr = [yr; (rand(raysPerPixel,1) + j)*pixelSize];
         pixelIndex = [pixelIndex; zeros(raysPerPixel,1) + currentPixel];
         currentPixel = currentPixel + 1;
-    end
+%     end
 end
 
 %generate random angles within the angular spread
 %negative angle means below the horizontal
-th = rand(raysPerPixel * (sensorSize)^2,1)*thetaSpread - thetaSpread./2;
+th = rand(raysPerPixel * sensorSizeX,1)*thetaSpread - thetaSpread./2;
 
 %generate random phi angles within the spread
 %negative angle means below the horizontal
-ph = rand(raysPerPixel * (sensorSize)^2,1)*phiSpread - phiSpread./2;
+ph = rand(raysPerPixel * sensorSizeX,1)*phiSpread - phiSpread./2;
 
 %distance to diffuser
 z = 100;
@@ -37,14 +38,14 @@ z = 100;
 %angle at which diffuser is hit stays the same
 xo = z * tand(th) + xr;
 
-%set up the diffuser where diffuser is same size as sensor in microns
-x_range = 2;
-y_range = 2;
+%looking at whole diffuser
 in = load('../Output/diffuser.mat');
 
 %diffuser strength
 strength = 50;
 diffuser_in = in.filtered * strength;
+
+%coordinate system in physical units from the diffuser file
 x = in.x;
 diff_upsample = false;
 if diff_upsample
@@ -55,43 +56,26 @@ else
 end
 y = x;
 px = mean(diff(x)); %diffuser "pixel" size in um/pixel
-
-x_idx = (x-min(x))/px;   %x vector as index
-range_idx = floor(x_range/px);
-%N is number of x points, changed it to length(xr)
-%dx_idx = floor(x_range/N/px);
-dx_idx = floor(x_range/length(xr)/px);
-if dx_idx<1
-    dx_idx = 1;
-end
-
-y_idx = (y-min(y))/px;   %y vector as index
-range_idy = floor(y_range/px);
-%M is number of y points, changed it to length(yr)
-%dy_idx = floor(y_range/M/px);
-dy_idx = floor(y_range/length(yr)/px);
-if dy_idx<1
-    dy_idx = 0;
-end
+%physical units
 
 %Setup gradients
-if dy_idx == 0
-    Fx = gradient(diffuser);
+% if dy_idx == 0 %flat in the y-direction
+    Fx = gradient(diffuser(1,:));
     Fy = zeros(size(Fx));
-elseif dx_idx == 0
-    Fy = gradient(diffuser);
-    Fx = zeros(size(Fy));
-else
-    [Fx, Fy] = gradient(diffuser);
-end
+% elseif dx_idx == 0 %flat in the x-direction
+%     Fy = gradient(diffuser);
+%     Fx = zeros(size(Fy));
+% else %sloped in both directions
+%     [Fx, Fy] = gradient(diffuser);
+%  end
 
 %Calculate surface norm at random positions by
 %interpolation within gradient
 %--------------------------------------------------------------
 % %Get z and surface normal at each random (xr(i),yr(i)) pair
 % if dy_idx==0
-%     Fxr = interp1(xg,Fx_crop,xr);  %Interpolate x gradient
-%     Fyr = zeros(size(Fxr));
+    Fxr = interp1(x,Fx,xo);  %Interpolate x gradient
+    Fyr = zeros(size(Fxr));
 %     %zr = interp1(xg,diff_crop,xr);   %Interpolate surface
 % elseif dx_idx==0
 %     Fyr = interp1(yg,Fy_crop,yr);  %Interpolate x gradient
@@ -107,8 +91,10 @@ end
 index = 1.5;
 
 %refraction
-[uxp, ~, ~] = refraction(xo, 0, th, 0, index);
+[uxp, ~, ~] = refraction(Fxr, Fyr, th, 0, index);
 %outputs the new angle after refraction in the x-direction
+
+uxp = 90 - acosd(uxp);
 
 %constructs cell array for output
 output = cell(2,3);

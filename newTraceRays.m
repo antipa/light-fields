@@ -24,7 +24,6 @@ end
 y = x;
 px = mean(diff(x)); %diffuser "pixel" size in um/pixel
 
-x_idx = (x-min(x))/px;   %x vector as index
 range_idx = floor(x_range/px);
 dx_idx = floor(x_range/N/px);
 if dx_idx<1
