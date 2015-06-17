@@ -3,7 +3,7 @@ sensorSizeX = 10; %given in pixels
 sensorSizeY = 0;
 thetaSpread = 7; %in degrees
 phiSpread = 0;
-nrays = 5000;
+nrays = 50000;
 
 if sensorSizeY == 0 && phiSpread == 0
     twoD = true;
@@ -75,6 +75,7 @@ end
     
     %coordinate system in physical units from the diffuser file
     x = in.x;
+    x = x - min(x);
     diff_upsample = false;
     if diff_upsample
         diffuser = imresize(diffuser_in,diff_upsample,'bicubic');
@@ -131,10 +132,11 @@ end
     
     
     %index of refraction
-    index = 1.5;
+    index = 1;
+    index_p = 1.5;
     
     %refraction
-    [uxp, uyp,~] = refraction(Fxr, Fyr, th, ph, index);
+    [uxp, uyp,~] = refraction(Fxr, Fyr, th, ph, index, index_p);
     %outputs the new angle after refraction in the x-direction
     uxp = 90 - acosd(uxp);
     uyp = 90 - acosd(uyp);

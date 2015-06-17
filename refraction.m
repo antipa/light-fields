@@ -1,4 +1,4 @@
-function [uxp, uyp, uzp] = refraction(Fxr, Fyr, th, ph, index)
+function [uxp, uyp, uzp] = refraction(Fxr, Fyr, th, ph, index, index_p)
 %Normal vectors. ith row is [x,y,z] normal at (xr(i),yr(i),zr(i)
 normals_norm = sqrt(Fxr.^2+Fyr.^2+1);   %Length of each vector
 normals = [-Fxr./normals_norm,-Fyr./normals_norm,ones(size(Fxr))./normals_norm];
@@ -20,7 +20,6 @@ uzn = uz./norms;
 
 I = acos(sum(normals.*[uxn, uyn, uzn],2));
 %Use snell's law to calculate Ip
-index_p = 1;
 Ip = asin(index/index_p*sin(I));
 %define gamma = n'cosI'-ncosI
 Gamma = index_p*cos(Ip)-index*cos(I);

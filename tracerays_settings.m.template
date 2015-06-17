@@ -40,5 +40,7 @@ z0 = 200;
 %Divided into P steps.
 ph_range = 30;
 th_range = 30;
-% index of refraction
+% first index of refraction
 index = 1.5;
+%second index of refraction
+index_p = 1;
