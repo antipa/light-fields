@@ -3,9 +3,9 @@ backwardRayTracing;
 gridX = 3;
 gridT = 3;
 xRange = [0 100];
-tRange = [-4 4];
+tRange = [4 -4];
 stepX = (max(xRange) - min(xRange)) ./ gridX;
-stepT = (max(tRange) - min(tRange)) ./ gridT;
+stepT = (tRange(2) - tRange(1)) ./ gridT;
 xValues = [];
 for l = xRange(1):stepX:xRange(2)
     for q = 1:gridX

@@ -70,7 +70,7 @@ end
     in = load('../Output/diffuser.mat');
     
     %diffuser strength
-    strength = 50;
+    strength = -50;
     diffuser_in = in.filtered * strength;
     
     %coordinate system in physical units from the diffuser file
@@ -153,7 +153,3 @@ end
     output{2,4} = yo;
     output{1,5} = 'phi';
     output{2,5} = uyp;
-    
-    %should not be getting negative output x-value because the
-    %sensor and the diffuser are the same size and the origin is in
-    %the bottom left corner of the sensor
