@@ -1,9 +1,9 @@
-pixelSize = 10; %pixel size in physical units
-sensorSizeX = 10; %given in pixels
+pixelSize = 1; %pixel size in physical units
+sensorSizeX = 1000; %given in pixels
 sensorSizeY = 0;
-thetaSpread = 7; %in degrees
+thetaSpread = 15; %in degrees
 phiSpread = 0;
-nrays = 50000;
+nrays = 1387500;
 
 if sensorSizeY == 0 && phiSpread == 0
     twoD = true;
@@ -54,7 +54,7 @@ end
     end
     
     %distance to diffuser
-    z = 100;
+    z = 200;
     
     %propagate to the diffuser by a distance z
     %angle at which diffuser is hit stays the same
@@ -75,6 +75,7 @@ end
     
     %coordinate system in physical units from the diffuser file
     x = in.x;
+    %first pixel starts at 0
     x = x - min(x);
     diff_upsample = false;
     if diff_upsample
@@ -126,13 +127,23 @@ end
         Fxr = interp1(x,Fx,xo); %Interpolate x gradient
         Fyr = zeros(size(Fxr));
     else
-        Fyr = interp2(x,y,Fx',xo,yo);
-        Fxr = interp2(x,y,Fy',xo,yo);
+        Fyr = interp2(x,y,Fx,xo,yo);
+        Fxr = interp2(x,y,Fy,xo,yo);
     end
     
+    good = ~isnan(Fxr) & ~isnan(Fyr);
+    Fxr = Fxr(good);
+    Fyr = Fyr(good);
+    th = th(good);
+    ph = ph(good);
+    xo = xo(good);
+    yo = yo(good);
+    pixelIndex = pixelIndex(good);
     
-    %index of refraction
+   %second index of refraction
     index = 1;
+    
+    %first index of refraction
     index_p = 1.5;
     
     %refraction

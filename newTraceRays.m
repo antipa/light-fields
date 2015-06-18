@@ -119,8 +119,8 @@ if useParfor
         
         %[NIDX, MIDX] = meshgrid(nidx,midx);
         
-        Fx_crop = Fx(nidx,midx);
-        Fy_crop = Fy(nidx,midx);
+        Fx_crop = Fx(midx,nidx);
+        Fy_crop = Fy(midx,nidx);
         
         %LF_index_start = P*Q*N*(mm-1)+P*Q*(nn-1);
         %LF_index_start = P*Q*N*(mm-1)+P*Q*(nn-1)+Q*(pp-1);
@@ -151,8 +151,8 @@ if useParfor
             %zr = interp1(yg,diff_crop,yr);   %Interpolate surface
         else
             %zr = interp2(xg,yg,diff_crop,xr,yr);   %Interpolate surface
-            Fyr = interp2(xg,yg,Fx_crop',xr,yr);  %Interpolate x gradient
-            Fxr = interp2(xg,yg,Fy_crop',xr,yr);  %Interpolate y gradiet
+            Fyr = interp2(xg,yg,Fx_crop,xr,yr);  %Interpolate x gradient
+            Fxr = interp2(xg,yg,Fy_crop,xr,yr);  %Interpolate y gradiet
         end
         
         %Refraction starts here ---------------------
@@ -308,8 +308,8 @@ else
             
             [NIDX, MIDX] = meshgrid(nidx,midx);
             
-            Fx_crop = Fx(nidx,midx);
-            Fy_crop = Fy(nidx,midx);
+            Fx_crop = Fx(midx,nidx);
+            Fy_crop = Fy(midx,nidx);
             for pp = 1:P
                 ph = dph*(rand(nrays,1)-pp+P/2);    %Random phi points
                 for qq = 1:Q
@@ -336,8 +336,8 @@ else
                         %zr = interp1(yg,diff_crop,yr);   %Interpolate surface
                     else
                         %zr = interp2(xg,yg,diff_crop,xr,yr);   %Interpolate surface
-                        Fyr = interp2(xg,yg,Fx_crop',xr,yr);  %Interpolate x gradient
-                        Fxr = interp2(xg,yg,Fy_crop',xr,yr);  %Interpolate y gradiet
+                        Fyr = interp2(xg,yg,Fx_crop,xr,yr);  %Interpolate x gradient
+                        Fxr = interp2(xg,yg,Fy_crop,xr,yr);  %Interpolate y gradiet
                     end
                     
                     
