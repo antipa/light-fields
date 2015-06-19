@@ -24,19 +24,19 @@ switch direction
         %number of Y points use 1 for 1d case
         M = 1;
         % number of X points
-        N = 5;
+        N = 3;
         %number of phi points (angle in y (M) direction)   use 1 for 1d
         P = 1;
         %number of theta points (angle in x direction)
-        Q = 5;
-        nrays = 500;
+        Q = 3;
+        nrays = 555;
         %how far along x to go in same units as pixels (micron)
-        x_range = 1000;
+        x_range = 100;
         %This will be divided into N steps
         %in M steps. Use 0 for 1d.
         y_range = 0;
         %Setup sensor parameters for a sensor that is the same size as the diffuser
-        npx =1000;
+        npx =10;
         %for 1d use 1
         npy = 1;
         %z0 = 228.6
@@ -50,23 +50,23 @@ switch direction
         %second index of refraction
         indexDiff = 1.5;
         if sync
-        pixelSize = x_range ./ npx; %pixel size in physical units
-        sensorSizeX = npx; %given in pixels
-        sensorSizeY = 0;
-        %2.5 is for strength 50
-        thetaSpread = th_range + 2.5; %in degrees
-        phiSpread = 0;
-        rays = nrays ./ (M*N*P*Q);
-        
-        %distance to diffuser
-        z = z0;
-        
-        %diffuser strength
-        strengthB = -strength;
-        gridX = N;
-        gridT = Q;
-        xRange = [0 x_range];
-        tRange = [th_range ./ 2 -th_range ./ 2];  
+            pixelSize = x_range ./ npx; %pixel size in physical units
+            sensorSizeX = npx; %given in pixels
+            sensorSizeY = 0;
+            %2.5 is for strength 50
+            thetaSpread = th_range + 2.5; %in degrees
+            phiSpread = 0;
+            rays = nrays * (M*N*P*Q);
+            
+            %distance to diffuser
+            z = z0;
+            
+            %diffuser strength
+            strengthB = -strength;
+            gridX = N;
+            gridT = Q;
+            xRange = [0 x_range];
+            tRange = [(th_range ./ 2) (-th_range ./ 2)];
         end
     case 'backward'
         pixelSize = 10; %pixel size in physical units
@@ -74,7 +74,7 @@ switch direction
         sensorSizeY = 0;
         thetaSpread = 5; %in degrees
         phiSpread = 0;
-        rays = 50000;
+        rays = 5000;
         
         %distance to diffuser
         z = 100;
@@ -89,43 +89,43 @@ switch direction
         gridX = 3;
         gridT = 3;
         xRange = [0 100];
-        tRange = [4 -4]; 
+        tRange = [4 -4];
         if sync
             %must make vis_prop = 0
-        useParfor = false;
-        strength = -strengthB;
-        diff_upsample = 0;
-        vis = 0;
-        vis_prop = 0;
-        save_prop = 0;
-        vis_sensor = 0;
-        %Range and step size for propagation movie
-        zmax = 1000;
-        zstep = 10;
-        %Setup tracing grid
-        %number of Y points use 1 for 1d case
-        M = 1;
-        % number of X points
-        N = gridX;
-        %number of phi points (angle in y (M) direction)   use 1 for 1d
-        P = 1;
-        %number of theta points (angle in x direction)
-        Q = gridT;
-        nrays = rays ./ (N*M*P*Q);
-        %how far along x to go in same units as pixels (micron)
-        x_range = pixelSize * sensorSizeX;
-        %This will be divided into N steps
-        %in M steps. Use 0 for 1d.
-        y_range = 0;
-        %Setup sensor parameters for a sensor that is the same size as the diffuser
-        npx = sensorSizeX;
-        %for 1d use 1
-        npy = 1;
-        %z0 = 228.6
-        z0 = z;
-        %how far in angle to go in degrees
-        %Divided into P steps.
-        ph_range = 0;
-        th_range = 2 * tRange(1);
+            useParfor = false;
+            strength = -strengthB;
+            diff_upsample = 0;
+            vis = 0;
+            vis_prop = 0;
+            save_prop = 0;
+            vis_sensor = 0;
+            %Range and step size for propagation movie
+            zmax = 1000;
+            zstep = 10;
+            %Setup tracing grid
+            %number of Y points use 1 for 1d case
+            M = 1;
+            % number of X points
+            N = gridX;
+            %number of phi points (angle in y (M) direction)   use 1 for 1d
+            P = 1;
+            %number of theta points (angle in x direction)
+            Q = gridT;
+            nrays = round(rays ./ (N*M*P*Q));
+            %how far along x to go in same units as pixels (micron)
+            x_range = pixelSize * sensorSizeX;
+            %This will be divided into N steps
+            %in M steps. Use 0 for 1d.
+            y_range = 0;
+            %Setup sensor parameters for a sensor that is the same size as the diffuser
+            npx = sensorSizeX;
+            %for 1d use 1
+            npy = 1;
+            %z0 = 228.6
+            z0 = z;
+            %how far in angle to go in degrees
+            %Divided into P steps.
+            ph_range = 0;
+            th_range = 2 * tRange(1);
         end
 end
