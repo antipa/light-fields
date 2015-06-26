@@ -137,7 +137,7 @@ stepX = (max(xRange) - min(xRange)) ./ gridX;
 stepT = (tRange(2) - tRange(1)) ./ gridT;
 xValues = [];
 for l = xRange(1):stepX:xRange(2)
-    for q = 1:gridX
+    for q = 1:gridT
         xValues = [xValues l];
     end
 end
@@ -155,7 +155,7 @@ for i = 1:sensorSizeX
    scatter(output{2,2}(list),output{2,3}(list) * indexDiff);
     for j = 1: gridX * gridT
         xmin = xValues(j);
-        xmax = xValues(j+gridX);
+        xmax = xValues(j+gridT);
         ymin = yValues(mod(j-1,length(yValues)-1) + 1);
         ymax = yValues(mod(j-1,length(yValues)-1) + 2);
         
