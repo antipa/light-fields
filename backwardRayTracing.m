@@ -145,14 +145,14 @@ end
 %start with the bottom left corner
 yValues = [tRange(2):-stepT:tRange(1)];
 
-figure(1);
-hold on
-grid on
+% figure(1);
+% hold on
+% grid on
 aMatrix = zeros(sensorSizeX, (gridX .* gridT));
 for i = 1:sensorSizeX
     %indices of output from pixel i
     list = find(output{2,1} == i);
-   scatter(output{2,2}(list),output{2,3}(list) * indexDiff);
+   %scatter(output{2,2}(list),output{2,3}(list) * indexDiff);
     for j = 1: gridX * gridT
         xmin = xValues(j);
         xmax = xValues(j+gridT);
@@ -169,8 +169,9 @@ for i = 1:sensorSizeX
         %if no rays from pixel i hit the grid,record normalized number of 
         %rays as 0
         if sum(b)
-        aMatrix(i,j) = sum(a) ./ sum(b);
+        aMatrix(i,j) = sum(a);
         end
     end
 end
+aMatrix = aMatrix ./ repmat(sum(aMatrix),[size(aMatrix,1),1]);
 hold off
