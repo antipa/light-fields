@@ -378,7 +378,7 @@ A_sub = A(idx,:);
 AtA = A_sub'*A_sub;
 
 
-lambda = 3000000;
+lambda = 300000;
 
 AtA_r = (AtA+lambda*speye(size(AtA)));
 
