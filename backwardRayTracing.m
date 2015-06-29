@@ -42,19 +42,19 @@ end
 %constructing A matrix by dividing the diffuser into a grid
 stepX = (max(xRange) - min(xRange)) / gridX;
 stepT = (max(tRange) - min(tRange)) / gridT;
-xValues = [];
-for l = min(xRange):stepX:max(xRange)
-    for q = 1:gridT
-        xValues = [xValues l];
-    end
-end
 
-%start with the bottom left corner
-yValues = min(tRange):stepT:max(tRange);
-
-aMatrix = zeros(sensorSizeX,(gridX .* gridT));
-%pixel indexing goes from bottom to top, left to right
 if twoD
+    xValues = [];
+    for l = min(xRange):stepX:max(xRange)
+        for q = 1:gridT
+            xValues = [xValues l];
+        end
+    end
+    
+    %start with the bottom left corner
+    tValues = min(tRange):stepT:max(tRange);
+    aMatrix = zeros(sensorSizeX,(gridX .* gridT));
+    %pixel indexing goes from bottom to top, left to right
     figure(1);
     hold on
     grid on
@@ -86,15 +86,25 @@ if twoD
         for j = 1: gridX * gridT
             xmin = xValues(j);
             xmax = xValues(j+gridT);
-            ymin = yValues(mod(j-1,length(yValues)-1) + 1);
-            ymax = yValues(mod(j-1,length(yValues)-1) + 2);
-            a = xo > xmin & xo <= xmax & uxp > ymin & uxp <= ymax;
+            tmin = tValues(mod(j-1,length(tValues)-1) + 1);
+            tmax = tValues(mod(j-1,length(tValues)-1) + 2);
+            a = xo > xmin & xo <= xmax & uxp > tmin & uxp <= tmax;
             aMatrix(i+1,j) = sum(a);
         end
     end
     aMatrix = aMatrix ./ repmat(sum(aMatrix),[size(aMatrix,1),1]);
     %hold off;
 else
+    %construct a 4d matrix
+    gridY = 3;
+    yRange = [0 10];
+    stepY = (max(yRange) - min(yRange)) / gridY;
+    gridP = 2;
+    pRange = [-2 2];
+    stepP = (max(pRange) - min(pRange)) / gridP;
+    %start with the bottom left corner
+    pValues = min(pRange):stepP:max(pRange);
+    lightField = zeros(sensorSizeX*sensorSizeY,gridX*gridY*gridT*gridP);
     for i = 0:sensorSizeX - 1
         for j = 0:sensorSizeY - 1
             xr = (rand(raysPerPixel,1) + i)*pixelSize;
@@ -123,7 +133,27 @@ else
             %outputs the new angle after refraction in the x-direction
             uxp = 90 - acosd(uxp);
             uyp = 90 - acosd(uyp);
-            %insert code for 4d histogram
+            tic
+            for a = 1:gridX
+                xmin = a * stepX;
+                xmax = (a+1) * stepX;
+                for b = 1:gridY
+                    ymin = b * stepY;
+                    ymax = (b+1) * stepY;
+                    for c = 1:gridT
+                        tmin = c * stepT;
+                        tmax = (c+1) * stepT;
+                        for d = 1:gridP
+                            pmin = d * stepP;
+                            pmax = (d+1) * stepP;
+                            inBox = xo > xmin & xo <= xmax & uxp > tmin & uxp <= tmax & yo > ymin ...
+                                & yo <= ymax & uyp > pmin & uyp <= pmax;
+                            lightField(sub2ind(size(zeros(sensorSizeX,sensorSizeY)),i+1,j+1),sub2ind(size(zeros(gridX,gridY,gridT,gridP)),a,b,c,d)) = sum(inBox);
+                        end
+                    end
+                end
+            end
+             toc
         end
     end
 end
