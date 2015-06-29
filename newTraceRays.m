@@ -222,8 +222,8 @@ else
                         %zr = interp1(yg,diff_crop,yr);   %Interpolate surface
                     else
                         %zr = interp2(xg,yg,diff_crop,xr,yr);   %Interpolate surface
-                        Fyr = interp2(xg,yg,Fx_crop,xr,yr);  %Interpolate x gradient
-                        Fxr = interp2(xg,yg,Fy_crop,xr,yr);  %Interpolate y gradiet
+                        Fxr = interp2(xg,yg,Fx_crop,xr,yr);  %Interpolate x gradient
+                        Fyr = interp2(xg,yg,Fy_crop,xr,yr);  %Interpolate y gradiet
                     end
                     
                     
