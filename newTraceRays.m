@@ -151,8 +151,8 @@ if useParfor
             %zr = interp1(yg,diff_crop,yr);   %Interpolate surface
         else
             %zr = interp2(xg,yg,diff_crop,xr,yr);   %Interpolate surface
-            Fyr = interp2(xg,yg,Fx_crop,xr,yr);  %Interpolate x gradient
-            Fxr = interp2(xg,yg,Fy_crop,xr,yr);  %Interpolate y gradiet
+            Fxr = interp2(xg,yg,Fx_crop,xr,yr);  %Interpolate x gradient
+            Fyr = interp2(xg,yg,Fy_crop,xr,yr);  %Interpolate y gradiet
         end
         
         %Refraction starts here ---------------------
@@ -166,7 +166,7 @@ if useParfor
         
         %Gather rays on sensor
         
-        gatherer = gather_rays_nohist(xo,yo,npx,npy,dpx,dpy,nidx_1,midx_1,px);
+        gatherer = hist4(xo,yo,npx,npy,dpx,dpy,nidx_1,midx_1,px);
         
         
         %Only gather rays if we've got more than 1 ray. It sounds
@@ -176,120 +176,6 @@ if useParfor
             
             [r_outc{LF_index}, c_outc{LF_index}, v_outc{LF_index}] = ...
                 build_A_matrix_sparse(gatherer,LF_index);
-            if vis_prop %animation to visualize propagation after refraction
-                
-                for z = 0:zstep:zmax
-                    set(0,'CurrentFigure',h3)
-                    yo = uyp*z+yr;
-                    xo = uxp*z+xr;
-                    gatherer1 = gather_rays_nohist(xo,yo,npx,npy,dpx,dpy,nidx(1),midx(1),px);
-                    
-                    if nnz(gatherer1)>1
-                        x_sensor = [0:npx-1]*dpx;
-                        y_sensor = [0:npy-1]*dpy;
-                        xmin = xg(1)+nidx(1)*px-tand(th_range)*zmax;
-                        xmax = xg(end)+nidx(1)*px+tand(th_range)*zmax;
-                        ymin = yg(1)+midx(1)*px-tand(ph_range)*zmax;
-                        ymax = yg(end)+midx(1)*px+tand(ph_range)*zmax;
-                        if dy_idx>1 && dx_idx>1
-                            
-                            imagesc(gatherer1,'XData',x_sensor,'YData',y_sensor)
-                            hold on
-                            axis image
-                            axis([xmin xmax ymin ymax])
-                        elseif dy_idx==0
-                            stairs(x_sensor,gatherer1)
-                            xlim([xmin xmax])
-                            xlabel('\mum')
-                        elseif dx_idx==0
-                            stairs(y_sensor,gatherer1)
-                            xlim([ymin ymax])
-                            xlabel('\mum')
-                        end
-                        title(['indensity at z=',num2str(z),' for ',num2str(nrays),...
-                            ' rays, \theta=',num2str(dth*(-qq+Q/2+.5)),...
-                            ' \phi=',num2str(dph*(-pp+P/2+.5))])
-                        hold off
-                        pause(1/100)
-                    end
-                end
-            end  %End propagation visualization
-            
-            if vis_sensor
-                set(0,'CurrentFigure',h4)
-                x_sensor = [0:npx-1]*dpx;
-                y_sensor = [0:npy-1]*dpy;
-                xmin = xg(1)+nidx(1)*px-tand(th_range)*z0;
-                xmax = xg(end)+nidx(1)*px+tand(th_range)*z0;
-                ymin = yg(1)+midx(1)*px-tand(ph_range)*z0;
-                ymax = yg(end)+midx(1)*px+tand(ph_range)*z0;
-                if dy_idx>1 && dx_idx>1
-                    imagesc(gatherer,'XData',x_sensor,'YData',y_sensor)
-                    hold on
-                    xlabel('\mum')
-                    ylabel('\mum')
-                    axis image
-                    axis([xmin xmax ymin ymax])
-                elseif dy_idx==0
-                    stairs(x_sensor,gatherer)
-                    xlim([xmin xmax])
-                    xlabel('\mum')
-                elseif dx_idx==0
-                    stairs(y_sensor,gatherer)
-                    xlim([ymin ymax])
-                    xlabel('\mum')
-                end
-                title(['indensity at z=',num2str(z0),' for ',num2str(nrays),...
-                    ' rays, \theta=',num2str(dth*(-qq+Q/2+.5)),...
-                    ' \phi=',num2str(dph*(-pp+P/2+.5))])
-                hold off
-                pause(1/24)
-            end
-        end
-        
-        %               %% Visualization
-        if vis
-            %Calculate global x and y index locations for rays
-            scl = 1;
-            nnr = xr/px+nidx(1);
-            mmr = yr/px+midx(1);
-            set(0,'CurrentFigure',h1)
-            if dy_idx == 0
-                %%
-                clf
-                plot(xg+px*nidx(1),diff_crop)
-                hold on
-                quiver(xr+px*nidx(1),zr,-Fxr,ones(size(Fxr)),5,'ShowArrowHead','off','LineStyle','-','Color',[1 .95 .8])
-                quiver(xr+px*nidx(1),zr,Fxr,-ones(size(Fxr)),5,'ShowArrowHead','off','LineStyle','-','Color',[1 .95 .8])
-                quiver(xr+px*nidx(1),zr,uxp,uzp,10,'Color','b')
-                quiver(xr+px*nidx(1),zr,uxn,-uzn,10,'ShowArrowHead','off','Color','b')
-                axis equal
-                
-            elseif dx_idx == 0
-            else
-                clf
-                surf(NIDX,MIDX,diff_crop/scl,'linestyle','none')
-                hold on
-                quiver3(nnr,mmr,zr/scl,-Fxr/scl,-Fyr/scl,ones(size(Fxr)))
-                quiver3(nnr,mmr,zr/scl,-uxn,-uyn,-uzn,100)
-                quiver3(nnr,mmr,zr/scl,uxp,uyp,uzp,100)
-                scatter3(nnr,mmr,zr/scl)
-                axis equal
-                view([0,0])
-                xlim([-2000 2000])
-                ylim([-2000 2000])
-                zlim([0 5000])
-                hold off
-                
-                set(0,'CurrentFigure',h2)
-                surf(NIDX,MIDX,diff_crop/scl,'linestyle','none')
-                hold on
-                quiver3(nnr,mmr,zr,uxn,uyn,uzn,1/scl)
-                axis equal
-                grid on
-                view([11,58])
-            end
-            pause(1/24)
         end
     end
 else
@@ -352,7 +238,7 @@ else
                     
                     %Gather rays on sensor
                     
-                    gatherer = gather_rays_nohist(xo,yo,npx,npy,dpx,dpy,nidx(1),midx(1),px);
+                    gatherer = hist4(xo,yo,npx,npy,dpx,dpy,nidx(1),midx(1),px);
                     
                     
                     %Only gather rays if we've got more than 1 ray. It sounds
@@ -376,7 +262,7 @@ else
                                 set(0,'CurrentFigure',h3)
                                 yo = uyp*z./uzp+yr;
                                 xo = uxp*z./uzp+xr;
-                                gatherer1 = gather_rays_nohist(xo,yo,npx,npy,dpx,dpy,nidx(1),midx(1),px);
+                                gatherer1 = hist4(xo,yo,npx,npy,dpx,dpy,nidx(1),midx(1),px);
                                 
                                 if nnz(gatherer1)>1
                                     x_sensor = [0:npx-1]*dpx;
