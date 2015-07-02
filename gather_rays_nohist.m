@@ -1,18 +1,9 @@
 function gatherer = gather_rays_nohist(xo,yo,npx,npy,dpx,dpy,offsetx,offsety,px)
+%left px as input to be consistent with hist4
 nidx = offsetx;
-midx = offsety;
-%bin outputs at sensor pixels in local physical units
-xo_r = (xo+dpx/2-mod(xo+dpx/2,dpx));
-yo_r = (yo+dpy/2-mod(yo+dpy/2,dpy));
-
-%Shift physically located rays to global coordinates
-xo_r_global = xo_r + (nidx(1)-1)*px;
-yo_r_global = yo_r + (midx(1)-1)*px;     
-
-%xo_r_sub = 1+round((xo_r-min(xo_r))/dpx);
-%yo_r_sub = 1+round((yo_r-min(yo_r))/dpy);
-xo_r_sub = 1+round((xo_r_global)/dpx);
-yo_r_sub = 1+round((yo_r_global)/dpy);
+midx = offsety;   
+xo_r_sub = round(xo/dpx)+nidx(1);
+yo_r_sub = round(yo/dpy)+midx(1);
 good = xo_r_sub>0&yo_r_sub>0&xo_r_sub<=npx&yo_r_sub<=npy;               
 xo_r_sub = xo_r_sub(good);
 yo_r_sub = yo_r_sub(good);
