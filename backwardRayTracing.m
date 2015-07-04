@@ -16,8 +16,10 @@ diffuser_in = in.filtered * strengthB;
 
 %coordinate system in physical units from the diffuser file
 x = in.x;
+
 %first pixel starts at 0 and goes to 6000
 x = x - min(x);
+
 diff_upsample = false;
 if diff_upsample
     diffuser = imresize(diffuser_in,diff_upsample,'bicubic');
@@ -98,7 +100,6 @@ else
     %construct a 4d matrix
    
     stepY = (max(yRange) - min(yRange)) / gridY;
-
     stepP = (max(pRange) - min(pRange)) / gridP;
     
     % Collect the histogram of rays per sensor-pixel * diffuser bin
@@ -106,10 +107,10 @@ else
     % 2nd dim = diffuser bin
     % value   = #rays
     
-    %     rng(0) % SEED the random number generator.
+    rng(0) % SEED the random number generator.
     
-    gatherer = zeros(sensorSizeX*sensorSizeY,gridX*gridY*gridT*gridP);
-    lightField = zeros(sensorSizeX*sensorSizeY,gridX*gridY*gridT*gridP);
+    gatherer = zeros(sensorSizeX*sensorSizeY, gridX*gridY*gridT*gridP);
+    lightField = zeros(sensorSizeX*sensorSizeY, gridX*gridY*gridT*gridP);
     for i = 0:sensorSizeX - 1
         for j = 0:sensorSizeY - 1
             % xr: array of "raysPerPixel" random value for x value of ray
@@ -127,6 +128,7 @@ else
             % xo, yo : position at the diffuser
             xo = z * tand(th) + xr;
             yo = z * tand(ph) + yr;
+            
             Fyr = interp2(x,y,Fy,xo,yo);
             Fxr = interp2(x,y,Fx,xo,yo);
             %throwing out points that did not hit the diffuser and could
@@ -146,16 +148,16 @@ else
             
             %%% gatherer computation starts here
             % x bins:
-            %   min(xRange) is the x-center of the first bin
+            %   min(xRange) is the min x (left edge) of the first bin
             %   gridX is the number of bins on x axis, stepX is the size of
             %   a bin on x axis
             % A bin includes the right-end but does not include the
             %   left-end
             %
-            xMinFirst = min(xRange) - 0.5 * stepX;
-            yMinFirst = min(yRange) - 0.5 * stepY;
-            tMinFirst = min(tRange) - 0.5 * stepT;
-            pMinFirst = min(pRange) - 0.5 * stepP;
+            xMinFirst = min(xRange);
+            yMinFirst = min(yRange);
+            tMinFirst = min(tRange);
+            pMinFirst = min(pRange);
             
             %bin numbers for each ray
             xo_r_sub = ceil((xo - xMinFirst) / stepX);
@@ -164,7 +166,8 @@ else
             uyp_r_sub = ceil((uyp - pMinFirst) / stepP);
             
             %check to see if the ray is in the grid
-            good = xo_r_sub>0&yo_r_sub>0&xo_r_sub<=gridX&yo_r_sub<=gridY...
+            good = xo_r_sub > 0 & yo_r_sub > 0 & ...
+                   xo_r_sub<=gridX&yo_r_sub<=gridY...
                 & uxp_r_sub>0 &uxp_r_sub <= gridT & uyp_r_sub >0 & uyp_r_sub <= gridP;
             xo_r_sub = xo_r_sub(good);
             yo_r_sub = yo_r_sub(good);
@@ -224,4 +227,7 @@ else
             end
         end
     end
+    assert(isequal(lightField,gatherer));
+    fprintf('Total rays in gatherer: %d\n', sum(gatherer));
+        
 end
