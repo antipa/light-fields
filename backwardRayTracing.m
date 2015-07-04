@@ -96,27 +96,35 @@ if twoD
     %hold off;
 else
     %construct a 4d matrix
-    gridY = 3;
-    yRange = [0 10];
+   
     stepY = (max(yRange) - min(yRange)) / gridY;
-    gridP = 2;
-    pRange = [-2 2];
+
     stepP = (max(pRange) - min(pRange)) / gridP;
+    
+    % Collect the histogram of rays per sensor-pixel * diffuser bin
+    % 1st dim = sensor pixel
+    % 2nd dim = diffuser bin
+    % value   = #rays
+    
+    %     rng(0) % SEED the random number generator.
     
     gatherer = zeros(sensorSizeX*sensorSizeY,gridX*gridY*gridT*gridP);
     lightField = zeros(sensorSizeX*sensorSizeY,gridX*gridY*gridT*gridP);
     for i = 0:sensorSizeX - 1
         for j = 0:sensorSizeY - 1
+            % xr: array of "raysPerPixel" random value for x value of ray
             xr = (rand(raysPerPixel,1) + i)*pixelSize;
             yr = (rand(raysPerPixel,1) + j)*pixelSize;
             
-            %generate random phi angles within the spread
+            %generate random phi angles within
+            %   the (- 0.5 * spread, + 0.5 * spread)
             %negative angle means below the horizontal
-            th = rand(raysPerPixel,1)*thetaSpread - thetaSpread./2;
-            ph = rand(raysPerPixel,1)*phiSpread - phiSpread./2;
+            th = (rand(raysPerPixel,1) - 0.5) * thetaSpread;
+            ph = (rand(raysPerPixel,1) - 0.5) * phiSpread;
             
             %propagate to the diffuser by a distance z
             %angle at which diffuser is hit stays the same
+            % xo, yo : position at the diffuser
             xo = z * tand(th) + xr;
             yo = z * tand(ph) + yr;
             Fyr = interp2(x,y,Fy,xo,yo);
@@ -131,21 +139,29 @@ else
             xo = xo(good);
             yo = yo(good);
             %refraction
-            [uxp, uyp,~] = refraction(Fxr, Fyr, th, ph, indexEnv, indexDiff);
+            [uxp, uyp, ~] = refraction(Fxr, Fyr, th, ph, indexEnv, indexDiff);
             %outputs the new angle after refraction in the x-direction
             uxp = 90 - acosd(uxp);
             uyp = 90 - acosd(uyp);
-            %bin outputs at sensor pixels in local physical units
-            xo_r = (xo+stepX/2-mod(xo+stepX/2,stepX));
-            yo_r = (yo+stepY/2-mod(yo+stepY/2,stepY));
-            uxp_r = (uxp+stepT/2-mod(uxp+stepT/2,stepT));
-            uyp_r = (uyp+stepP/2-mod(uyp+stepP/2,stepP));
+            
+            %%% gatherer computation starts here
+            % x bins:
+            %   min(xRange) is the x-center of the first bin
+            %   gridX is the number of bins on x axis, stepX is the size of
+            %   a bin on x axis
+            % A bin includes the right-end but does not include the
+            %   left-end
+            %
+            xMinFirst = min(xRange) - 0.5 * stepX;
+            yMinFirst = min(yRange) - 0.5 * stepY;
+            tMinFirst = min(tRange) - 0.5 * stepT;
+            pMinFirst = min(pRange) - 0.5 * stepP;
             
             %bin numbers for each ray
-            xo_r_sub = 1+round((xo_r)/stepX);
-            yo_r_sub = 1+round((yo_r)/stepY);
-            uxp_r_sub = 1+round((uxp_r)/stepT);
-            uyp_r_sub = 1+round((uyp_r)/stepP);
+            xo_r_sub = ceil((xo - xMinFirst) / stepX);
+            yo_r_sub = ceil((yo - yMinFirst) / stepY);
+            uxp_r_sub = ceil((uxp - tMinFirst) / stepT);
+            uyp_r_sub = ceil((uyp - pMinFirst) / stepP);
             
             %check to see if the ray is in the grid
             good = xo_r_sub>0&yo_r_sub>0&xo_r_sub<=gridX&yo_r_sub<=gridY...
@@ -162,28 +178,46 @@ else
             
             %if rays hit the grid
             if nnz(good)
-                %number of rays in each bin
-                ray_hist = diff(ray_entry);
-                %number of rays in last bin
-                ray_hist(end+1) = length(ray_ind)-ray_entry(end);
-                gatherer(sub2ind([sensorSizeY,sensorSizeX],j+1,i+1),ray_unique) = ray_hist;
+                if length(ray_unique) > 1
+                    %number of rays in each bin
+                    ray_hist = diff(ray_entry);
+                    %number of rays in last bin
+                    ray_hist(end+1) = length(ray_ind)-ray_entry(end)+1;
+                    gatherer(sub2ind([sensorSizeY,sensorSizeX],j+1,i+1),ray_unique) = ray_hist;
+                elseif length(ray_unique) == 1
+                    %if 1 bin want total number of rays that hit the grid
+                    %or 1 ray that hit the grid
+                    gatherer(sub2ind([sensorSizeY,sensorSizeX],j+1,i+1),ray_unique) = sum(good);
+                end
             end
             %if rays didn't hit the grid, leave the zeros
+            
+            % lightfield computation
+            % x bins:
+            %   min(xRange) is the x-center of the first bin
+            %   gridX is the number of bins on x axis, stepX is the size of
+            %   a bin on x axis
+            % A bin includes the right-end but does not include the
+            %   left-end
             for a = 1:gridX
-                xmin = min(xRange) + (a-1) * stepX;
-                xmax = min(xRange) + a * stepX;
+                xmin = xMinFirst + (a - 1) * stepX; % x min for this bin
+                xmax = xmin + stepX;
                 for b = 1:gridY
-                    ymin = min(yRange) + (b-1) * stepY;
-                    ymax = min(yRange) + b * stepY;
+                    ymin = yMinFirst + (b - 1) * stepY;
+                    ymax = ymin + stepY;
                     for c = 1:gridT
-                        tmin = min(tRange) + (c-1) * stepT;
-                        tmax = min(tRange) + c * stepT;
+                        tmin = tMinFirst + (c - 1) * stepT;
+                        tmax = tmin + stepT;
                         for d = 1:gridP
-                            pmin = min(pRange) + (d-1) * stepP;
-                            pmax = min(pRange) + d * stepP;
-                            inBox = xo > xmin & xo <= xmax & uxp > tmin & uxp <= tmax & yo > ymin ...
-                                & yo <= ymax & uyp > pmin & uyp <= pmax;
-                            lightField(sub2ind([sensorSizeY,sensorSizeX],j+1,i+1),sub2ind([gridX,gridY,gridT,gridP],a,b,c,d)) = sum(inBox);
+                            pmin = pMinFirst + (d - 1) * stepP;
+                            pmax = pmin + stepP;
+                            
+                            inBox = xo > xmin & xo <= xmax & ...
+                                uxp > tmin & uxp <= tmax & ...
+                                yo > ymin & yo <= ymax & ...
+                                uyp > pmin & uyp <= pmax;
+                            lightField(sub2ind([sensorSizeY,sensorSizeX],j+1,i+1),...
+                                sub2ind([gridX,gridY,gridT,gridP],a,b,c,d)) = sum(inBox);
                         end
                     end
                 end

@@ -5,8 +5,8 @@
 %'forward'
 %'backward'
 direction = 'backward';
-sync = true;
-
+sync = false;
+%TODO:adjust syncing for 4d
 switch direction
     case 'forward'
         %must make vis_prop = 0
@@ -22,29 +22,29 @@ switch direction
         zstep = 10;
         %Setup tracing grid
         %number of Y points use 1 for 1d case
-        M = 1;
+        M = 3;
         % number of X points
         N = 3;
         %number of phi points (angle in y (M) direction)   use 1 for 1d
-        P = 1;
+        P = 2;
         %number of theta points (angle in x direction)
-        Q = 3;
-        nrays = 555;
+        Q = 2;
+        nrays = 138;
         %how far along x to go in same units as pixels (micron)
-        x_range = 100;
+        x_range = 10;
         %This will be divided into N steps
         %in M steps. Use 0 for 1d.
-        y_range = 0;
+        y_range = 10;
         %Setup sensor parameters for a sensor that is the same size as the diffuser
-        npx =10;
+        npx =100;
         %for 1d use 1
-        npy = 1;
+        npy = 100;
         %z0 = 228.6
         z0 = 100;
         %how far in angle to go in degrees
         %Divided into P steps.
-        ph_range = 0;
-        th_range = 8;
+        ph_range = .2;
+        th_range = .2;
         % first index of refraction
         indexEnv = 1;
         %second index of refraction
@@ -52,10 +52,10 @@ switch direction
         if sync
             pixelSize = x_range ./ npx; %pixel size in physical units
             sensorSizeX = npx; %given in pixels
-            sensorSizeY = 0;
+            sensorSizeY = npy;
             %2.5 is for strength 50
             thetaSpread = th_range + 2.5; %in degrees
-            phiSpread = 0;
+            phiSpread = ph_range + 2.5;
             rays = nrays * (M*N*P*Q);
             
             %distance to diffuser
@@ -69,12 +69,12 @@ switch direction
             tRange = [(th_range ./ 2) (-th_range ./ 2)];
         end
     case 'backward'
-        pixelSize = 10; %pixel size in physical units
-        sensorSizeX = 10; %given in pixels
-        sensorSizeY = 0;
-        thetaSpread = 5; %in degrees
+        pixelSize = 1; %pixel size in physical units
+        sensorSizeX = 1; %given in pixels
+        sensorSizeY = 1;
+        thetaSpread = 2.7; %in degrees
         phiSpread = 0;
-        rays = 5000;
+        rays = 1000;
         
         %distance to diffuser
         z = 100;
@@ -86,10 +86,14 @@ switch direction
         %first index of refraction
         indexDiff = 1.5;
         
-        gridX = 3;
+        gridX = 2;
         gridT = 3;
-        xRange = [0 100];
-        tRange = [4 -4];
+        xRange = [0 pixelSize*sensorSizeX];
+        tRange = [2 0];
+            gridP = 2;
+    pRange = [0 2];
+     gridY = 3;
+    yRange = [0 2];
         if sync
             %must make vis_prop = 0
             useParfor = false;
@@ -104,11 +108,11 @@ switch direction
             zstep = 10;
             %Setup tracing grid
             %number of Y points use 1 for 1d case
-            M = 1;
+            M = gridY;
             % number of X points
             N = gridX;
             %number of phi points (angle in y (M) direction)   use 1 for 1d
-            P = 1;
+            P = gridP;
             %number of theta points (angle in x direction)
             Q = gridT;
             nrays = round(rays ./ (N*M*P*Q));
@@ -116,16 +120,16 @@ switch direction
             x_range = pixelSize * sensorSizeX;
             %This will be divided into N steps
             %in M steps. Use 0 for 1d.
-            y_range = 0;
+            y_range = pixelSize * sensorSizeY;
             %Setup sensor parameters for a sensor that is the same size as the diffuser
             npx = sensorSizeX;
             %for 1d use 1
-            npy = 1;
+            npy = sensorSizeY;
             %z0 = 228.6
             z0 = z;
             %how far in angle to go in degrees
             %Divided into P steps.
-            ph_range = 0;
-            th_range = 2 * tRange(1);
+            ph_range = max(pRange) - min(pRange);
+            th_range = max(tRange) - min(tRange);
         end
 end
