@@ -365,7 +365,7 @@ caxis([0 prctile(sensor,99.8)])
 
 %% Invert
 invert_in = demosaic(imread('/Users/nick.antipa/Documents/Diffusers/20150601/cman_diff_small_aperture.tif'),'bggr');
-sub = 3;
+sub = 5;
 to_invert = double(invert_in(ulr:sub:ulr+s,ulc:sub:ulc+s,2));
 %to_invert = to_invert-prctile(to_invert(:),.05);
 to_invert = to_invert-min(min(to_invert));
