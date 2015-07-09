@@ -1,4 +1,16 @@
-function [uxp, uyp, uzp] = refraction(Fxr, Fyr, th, ph, index, index_p)
+function [uxp, uyp, uzp] = refraction(Fxr, Fyr, th, ph, index, index_p, varargin)
+%First optional input is either 'angles' or 'cosines'. Second optional input is a uzn vector
+%if using cosines.  
+if strcmp(varargin{1},'cosines')
+  uxn = th;
+  uyn = ph;
+  if isMatrix(varargin{2})
+  uzn = varargin{2};
+  elseif isMatrix(varargin{1})
+      uzn = varargin{1};
+  end
+  
+elseif strcmp(varargin{1},'angles') || nargin == 6
 %Normal vectors. ith row is [x,y,z] normal at (xr(i),yr(i),zr(i)
 normals_norm = sqrt(Fxr.^2+Fyr.^2+1);   %Length of each vector
 normals = [-Fxr./normals_norm,-Fyr./normals_norm,ones(size(Fxr))./normals_norm];
@@ -15,6 +27,7 @@ uxn = ux./norms;
 uyn = uy./norms;
 uzn = uz./norms;
 
+end
 
 %Calculate magnitude of incident angle I
 

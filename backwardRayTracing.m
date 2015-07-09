@@ -154,9 +154,12 @@ else
             yo = yo(good);
             
             %outputs new theta and phi angles after refraction
-            [uxp, uyp, ~] = refraction(Fxr, Fyr, th, ph, indexEnv, indexDiff);
-            uxp = 90 - acosd(uxp);
-            uyp = 90 - acosd(uyp);
+            [uxp, uyp, uzp] = refraction(Fxr, Fyr, th, ph, indexEnv, indexDiff,'angles');
+            
+            %propagate a second distance from the diffuser to the light
+            %source
+            [yo, xo] = propagation(uyp, uzp, z0, yo, uxp, xo);
+            
             
             if useEfficient
                 gatherer = gathererEfficient(gatherer,gridX,gridY,gridT,gridP,xMinFirst,yMinFirst,tMinFirst,...
