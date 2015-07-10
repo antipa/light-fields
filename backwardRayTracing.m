@@ -1,4 +1,4 @@
-profile on;
+%profile on;
 try
     tracerays_settings;
 catch exception
@@ -57,6 +57,7 @@ if twoD
     figure(1);
     hold on
     grid on
+    
     for i = 0:sensorSizeX - 1
         xr = (rand(raysPerPixel,1) + i) * pixelSize;
         th = rand(raysPerPixel,1)*thetaSpread - thetaSpread./2;
@@ -80,7 +81,7 @@ if twoD
         [uxp,~,~] = refraction(Fxr, Fyr, th, ph, indexEnv, indexDiff);
         %outputs the new angle after refraction in the x-direction
         uxp = 90 - acosd(uxp);
-        scatter(xo,uxp * indexDiff);
+        %scatter(xo,uxp * indexDiff);
         %constructing a row of the A matrix
         for j = 1: gridX * gridT
             xmin = xValues(j);
@@ -134,12 +135,6 @@ else
             xo = z * tand(th) + xr;
             yo = z * tand(ph) + yr;
             
-%             good = xo > xMinFirst & xo <= 6001 & yo > yMinFirst & yo <= 6001;
-%             xo = xo(good);
-%             yo = yo(good);
-%             th = th(good);
-%             ph = ph(good);
-            
             Fyr = interp2(x,y,Fy,xo,yo);
             Fxr = interp2(x,y,Fx,xo,yo);
             
@@ -158,7 +153,7 @@ else
             
             %propagate a second distance from the diffuser to the light
             %source
-            [yo, xo] = propagation(uyp, uzp, z0, yo, uxp, xo);
+            [yo, xo] = propagation(uyp, uzp, z2, yo, uxp, xo);
             
             
             if useEfficient
@@ -180,4 +175,4 @@ else
 end
 
 %fprintf('%d\n',toc);
-profile viewer;
+%profile viewer;
