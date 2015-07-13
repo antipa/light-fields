@@ -39,10 +39,11 @@ else
     [Fx, Fy] = gradient(diffuser);
 end
 
-%size of each bin
+%size of each histogram bin on diffuser
 stepX = (max(xRange) - min(xRange)) / gridX;
 stepT = (max(tRange) - min(tRange)) / gridT;
 
+%calculates edges of histogram bins in x-direction on diffuser
 if twoD
     xValues = [];
     for l = min(xRange):stepX:max(xRange)
@@ -51,24 +52,30 @@ if twoD
         end
     end
     
+    %edges of histogram bins in theta-direction on diffuser
     tValues = min(tRange):stepT:max(tRange);
     aMatrix = zeros(sensorSizeX,(gridX .* gridT));
-    %pixel indexing goes from bottom to top, left to right
-    figure(1);
-    hold on
-    grid on
     
+    %    figure(1);
+    %    hold on
+    %    grid on
+    
+    %sensor pixel indexing goes from bottom to top, left to right
     for i = 0:sensorSizeX - 1
+        %generate random x and theta values for rays
         xr = (rand(raysPerPixel,1) + i) * pixelSize;
         th = rand(raysPerPixel,1)*thetaSpread - thetaSpread./2;
         ph = zeros(raysPerPixel,1);
+        
         %propagate to the diffuser by a distance z
         %angle at which diffuser is hit stays the same
         xo = z * tand(th) + xr;
         yo = zeros(length(xr),1);
-        Fxr = interp1(x,Fx,xo); %Interpolate x gradient
+        
+        Fxr = interp1(x,Fx,xo); %interpolate x gradient
         Fyr = zeros(size(Fxr));
-        %throwing out points that did not hit the diffuser and could
+        
+        %throw out points that did not hit the diffuser and could
         %not be interpolated
         good = ~isnan(Fxr);
         Fxr = Fxr(good);
@@ -77,31 +84,38 @@ if twoD
         ph = ph(good);
         xo = xo(good);
         yo = yo(good);
-        %refraction
+        
+        %output the new angle after refraction in the x-direction
         [uxp,~,~] = refraction(Fxr, Fyr, th, ph, indexEnv, indexDiff);
-        %outputs the new angle after refraction in the x-direction
         uxp = 90 - acosd(uxp);
+        
         %scatter(xo,uxp * indexDiff);
+        
         %constructing a row of the A matrix
         for j = 1: gridX * gridT
+            %edges of the histogram bin
             xmin = xValues(j);
             xmax = xValues(j+gridT);
             tmin = tValues(mod(j-1,length(tValues)-1) + 1);
             tmax = tValues(mod(j-1,length(tValues)-1) + 2);
             a = xo > xmin & xo <= xmax & uxp > tmin & uxp <= tmax;
+            
+            %add up all rays in the bin
             aMatrix(i+1,j) = sum(a);
         end
     end
+    %normalize A matrix by the column sum (total number of rays in each
+    %histogram box)
     aMatrix = aMatrix ./ repmat(sum(aMatrix),[size(aMatrix,1),1]);
     %hold off;
 else
-    %size of each bin
+    %size of each bin in y- and phi-directions
     stepY = (max(yRange) - min(yRange)) / gridY;
     stepP = (max(pRange) - min(pRange)) / gridP;
     
-    %rng(0) %for testing, seed the random number generator
+    %rng(0) %for testing, seeds the random number generator
     
-    %left most edge of the grid (not included)
+    %left most edges of the histogram grid (not included)
     xMinFirst = min(xRange);
     yMinFirst = min(yRange);
     tMinFirst = min(tRange);
@@ -120,7 +134,7 @@ else
     end
     for i = 0:sensorSizeX - 1
         for j = 0:sensorSizeY - 1
-            %random x and y positions on the sensor
+            %random x- and y-positions on the sensor
             xr = (rand(raysPerPixel,1) + i)*pixelSize;
             yr = (rand(raysPerPixel,1) + j)*pixelSize;
             
@@ -130,7 +144,7 @@ else
             th = (rand(raysPerPixel,1) - 0.5) * thetaSpread;
             ph = (rand(raysPerPixel,1) - 0.5) * phiSpread;
             
-            %x and y positions on the diffuser as a result of propagating
+            %x- and y-positions of rays on the diffuser after propagating
             %by distance z
             xo = z * tand(th) + xr;
             yo = z * tand(ph) + yr;
@@ -148,13 +162,11 @@ else
             xo = xo(good);
             yo = yo(good);
             
-            %outputs new theta and phi angles after refraction
+            %outputs direction cosines after refraction
             [uxp, uyp, uzp] = refraction(Fxr, Fyr, th, ph, indexEnv, indexDiff,'angles');
             
-            %propagate a second distance from the diffuser to the light
-            %source
+            %propagate from diffuser to the light source
             [yo, xo] = propagation(uyp, uzp, z2, yo, uxp, xo);
-            
             
             if useEfficient
                 gatherer = gathererEfficient(gatherer,gridX,gridY,gridT,gridP,xMinFirst,yMinFirst,tMinFirst,...
@@ -168,6 +180,7 @@ else
     end
     
     %for testing, check to see if outputs from the gatherer functions agree
+    %and prints the number of rays in each histogram bin
     if useSimple && useEfficient
         assert(isequal(lightField,gatherer));
         fprintf('Total rays in gatherer: %d\n', sum(sum(gatherer)));

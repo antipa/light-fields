@@ -17,26 +17,24 @@ switch direction
         save_prop = 0;
         vis_sensor = 0;
         
-        %Range and step size for propagation movie
-        zmax = 1000;
-        zstep = 10;
+        zmax = 1000; %range for propagation movie
+        zstep = 10; %step size for propagation movie
         
         %Setup tracing grid
-        M = 3; %number of Y points use 1 for 1d case
+        M = 3; %number of Y points, use 1 for 1d case
         N = 3; % number of X points
-        P = 2; %number of phi points (angle in y (M) direction)   use 1 for 1d
-        Q = 2; %number of theta points (angle in x direction)
+        P = 2; %number of phi points (angle in y-direction), use 1 for 1d
+        Q = 2; %number of theta points (angle in x-direction)
         
         nrays = 138; %number of rays per box in the tracing grid
-        x_range = 10; %how far along x to go in same units as pixels (micron)
-        %This will be divided into N steps
-        y_range = 10; %divided into M steps. Use 0 for 1d.
+        x_range = 10; %how far along x to go in same units as pixels (microns), divided into N steps
+        y_range = 10; %divided into M steps, use 0 for 1d
         
         %Setup sensor parameters for a sensor that is the same size as the diffuser
         npx =100; %number of pixels in the x-direction on diffuser
-        npy = 100; %for 1d use 1
+        npy = 100; %number of pixels in the y-direction on diffuser, for 1d use 1
         z0 = 100; %propagation distance from diffuser to sensor
-        ph_range = .2; %how far in angle to go in degrees, divided into P steps
+        ph_range = .2; %angle range in degrees, divided into P steps
         th_range = .2; %divided into Q steps
         indexEnv = 1; %index of refraction of environment
         indexDiff = 1.5; %index of refraction of diffuser
@@ -47,14 +45,14 @@ switch direction
             sensorSizeX = npx;
             sensorSizeY = npy;
             
-            %2.5 is for strength 50
+            %use 2.5 for diffuser strength 50
             thetaSpread = th_range + 2.5;
             phiSpread = ph_range + 2.5;
             rays = nrays * (M*N*P*Q);
             z = z0;
             z2 = 0; %for forward, assuming rays are coming from diffuser
             
-            %always uses efficient histogram for 
+            %always uses efficient histogram when synced
             useSimple = false;
             useEfficient = true;
             diff_upsample = false;
@@ -72,20 +70,21 @@ switch direction
             gridT = Q;
             
             pRange = [(ph_range ./ 2) (-ph_range ./ 2)];
-            gridP = P;  
+            gridP = P;
         end
     case 'backward'
-        pixelSize = 1; %pixel size in physical units
+        pixelSize = 1; %pixel size in physical units (microns)
         sensorSizeX = 3; %given in pixels
         sensorSizeY = 3; %set to 0 for 2D
-        thetaSpread = 2.7; %in degrees
+        thetaSpread = 2.7; %total spread, in degrees
         phiSpread = 0; %set to 0 for 2D
-        rays = 1000; %total number of rays on whole sensor
+        rays = 1000; %number of rays on whole sensor
         z = 100; %distance from sensor to diffuser
         z2 = 50; %distance from diffuser to light source
         %if syncing with forward, z2 should be 0
         
-        %if both useSimple and useEfficient true, turns on 
+        %if both useSimple and useEfficient true, checks if the histograms
+        %generated from both functions are equal
         useSimple = true; %use gathererSimple.m
         useEfficient = true;  %use gathererEfficient.m
         diff_upsample = false; %upsample the diffuser file
@@ -105,10 +104,9 @@ switch direction
         
         pRange = [-90 90];
         gridP = 10;
-
+        
         if sync
-            %%%%
-            useParfor = false;
+            useParfor = true; %not doing any visualization, so use parfor when synced
             strength = -strengthB;
             diff_upsample = 0;
             vis = 0;

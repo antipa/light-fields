@@ -2,8 +2,8 @@ function lightField = gathererEfficient(lightField,gridX,gridY,gridT,gridP,xMinF
     yMinFirst,tMinFirst,pMinFirst,stepX,stepY,stepT,stepP,i,j,sensorSizeX,sensorSizeY,xo,yo,uxp,uyp)
 %This function calculates the number of rays from a single sensor pixel that
 %hit each bin on the diffuser. It is more efficient because it bins all of
-%the rays from each sensor pixel simultaneously. See gathererSimple.m for 
-%the simple implementation. 
+%the rays from each sensor pixel simultaneously. See gathererSimple.m for
+%the simple implementation.
 
 %bins include the right end but do not include the left end
 %calculates bin number for the rays in each dimension
@@ -37,7 +37,7 @@ if nnz(good)
         ray_hist = diff(ray_entry);
         %calculates number of rays in last bin
         ray_hist(end+1) = length(ray_ind)-ray_entry(end)+1;
-        %assigns the number of rays that hit each bin to the linear index of the bin 
+        %assigns the number of rays that hit each bin to the linear index of the bin
         lightField(sub2ind([sensorSizeY,sensorSizeX],j+1,i+1),ray_unique) = ray_hist;
     elseif length(ray_unique) == 1
         %if 1 bin want total number of rays that hit the grid
