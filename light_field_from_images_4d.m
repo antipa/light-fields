@@ -97,7 +97,7 @@ end
 %%
 if save_gif
     str = input('Output file name: ','s')
-    filename = ['./Output/',str,'.gif'] 
+    filename = ['../Output/',str,'.gif'] 
 end
 
 %%
