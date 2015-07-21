@@ -16,7 +16,7 @@ ray_ind = sort(sub2ind([npy,npx],yo_r_sub,xo_r_sub));
 if nnz(good)
     if length(ray_unique)>1
         ray_hist = diff(ray_entry);  
-        ray_hist(end+1) = length(ray_ind)-ray_entry(end);
+        ray_hist(end+1) = length(ray_ind)-ray_entry(end)+1;
         [rr, cc] = ind2sub([npy,npx],ray_unique);
         gatherer = sparse(rr,cc,ray_hist,npy,npx);
 
