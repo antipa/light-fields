@@ -1,4 +1,4 @@
-%profile on;
+profile on;
 try
     tracerays_settings;
 catch exception
@@ -188,4 +188,4 @@ else
 end
 
 %fprintf('%d\n',toc);
-%profile viewer;
+profile viewer;

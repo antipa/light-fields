@@ -156,7 +156,7 @@ if useParfor
         end
         
         %Refraction starts here ---------------------
-        [uxp, uyp, uzp] = refraction(Fxr, Fyr, th, ph, indexDiff, indexEnv);
+        [uxp, uyp, uzp] = refraction(Fxr, Fyr, th, ph, indexDiff, indexEnv,'angles');
         %End refraction-------------
         
         %propagate to output plane by a distance z
@@ -228,7 +228,7 @@ else
                     
                     
                     %Refraction starts here ---------------------
-                    [uxp, uyp, uzp] = refraction(Fxr, Fyr, th, ph, indexDiff, indexEnv);
+                    [uxp, uyp, uzp] = refraction(Fxr, Fyr, th, ph, indexDiff, indexEnv,'angles');
                     %End refraction-------------
                     
                     %propagate to output plane by a distance z
