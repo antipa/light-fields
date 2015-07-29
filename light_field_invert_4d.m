@@ -55,7 +55,7 @@ else  %Color case
     sensor = zeros(nsx,nsy,3);    %Preallocate sensor
     recovered_reshaped = cell(1,3); %Preallocate space for recovered light field
     lf_final = zeros(ny*nphi,nx*ntheta,3);     %Preallocate final light field
-    in = load('../Output/dragon_bunny_50x50.mat');   %Load light field
+    in = load('./dragon_bunny_50x50.mat');   %Load light field
     set(0,'CurrentFigure',h5)
     AtA = A_sub1'*A_sub1;   %Computer A'A
     AtA_r = (AtA+lambda*speye(size(AtA)));   %Add regularization

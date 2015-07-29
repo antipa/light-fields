@@ -1,7 +1,7 @@
 %%
 %Find center of each screen pixel on camera from diffuser-free image. These
 %centers will serve as the centers for cropping each diffuser psf.
-precompute = 1;
+precompute = 0;
 fname = '/Users/nick.antipa/Documents/Diffusers/20150601/c.tif';
 info = imfinfo(fname);
 num_images = numel(info);
@@ -245,17 +245,19 @@ h4 = figure(4)
 % end
 %
 % mm = circshift(1:length(im_list),[0,-(mstart-1)])
-
+sub = 10;
 if ~precompute
-    x = 1:size(im_in,2);
-    y = 1:size(im_in,1);
+    x = 1:floor(size(im_in,2)/sub);
+    y = 1:floor(size(im_in,1)/sub);
     [X,Y] = meshgrid(x,y);
-    maskn = zeros(size(X));
+    maskn = zeros(floor(size(X)/sub));
     
     kernel = fspecial('Gaussian',65,15);
     kernel1 = fspecial('Gaussian',35,11);
-    SE = strel('disk',75);
+    SE = strel('disk',75);    %background removal strel
+    kernel_sm = ones(sub);   %Smoothing kernel
     
+    %Prepare cell arrays for sparse value storage.
     r_outc = cell(numel(xs),1);
     c_outc = cell(numel(xs),1);
     v_outc = cell(numel(xs),1);
@@ -265,42 +267,46 @@ if ~precompute
         set(0,'CurrentFigure',h4)
         k = im_list(m);
         im_in_diff = imread(fname, k, 'Info', info);
-        A_dem = demosaic(im_in_diff,'rggb');
+        A_dem = demosaic(im_in_diff,'bggr');
         A_g = A_dem(:,:,2);
-        A_crop = im_in_diff(ulr:ulr+s,ulc:ulc+s);
+        
+
         ystart = mod(7-m,8)+1;
         xstart = mod(6+ceil((m)/8),8)+1;
         xsub = xs(xstart:8:end,ystart:8:end);
         ysub = ys(xstart:8:end,ystart:8:end);
-        xt = xsub';
-        yt = ysub';
+        xt = xsub'/sub;
+        yt = ysub'/sub;
         filtered1 = imfilter(A_g,kernel1);
         bg = imopen(filtered1,SE);
-        A_bgrm = double(A_g-bg);
-        A_bgrm(A_bgrm<0) = 0;
+        A_bgrm_full = double(A_g-bg);
+        A_bgrm_full(A_bgrm_full<0) = 0;
+        
+        A_g_sm = imfilter(A_bgrm_full,kernel_sm);
+        A_bgrm = A_g_sm(1:sub:end,1:sub:end);
         
         
         for n = 1:numel(xsub)
             clf
-            xmask = xt(n)+ulc-X;
-            ymask = yt(n)+ulr-Y;
+            xmask = (xt(n)+ulc/sub-X);
+            ymask = (yt(n)+ulr/sub-Y);
             
             pow = 6;
-            supergauss = exp(-(xmask.^pow+ymask.^pow)/((4*dpx).^pow));
-            maskn = (abs(xt(n)+ulc-X)<=5*dpx) & (abs(yt(n)+ulr-Y)<=5*dpy);
+            supergauss = exp(-(xmask.^pow+ymask.^pow)/((4*dpx/sub).^pow));
+            maskn = (abs(xt(n)+ulc/sub-X)<=5*dpx/sub) & (abs(yt(n)+ulr/sub-Y)<=5*dpy/sub);
             maskn = maskn.*supergauss;
-            %maskn(round(ulr+ysub(n)-4*dpy):round(ulr+ysub(n)+4*dpy),...
-            %round(ulc+xsub(n)-4*dpx):round(ulc+xsub(n)+4*dpx))=1;
-            %maskn =
-            %         imagesc(maskn.*A_bgrm);
-            %
-            %         caxis([0 3000])
-            %
-            %         hold on
-            %         scatter(xt(n)+ulc,yt(n)+ulr,'k+')
-            %         pause(1/10000)
+%             maskn(round(ulr+ysub(n)-4*dpy):round(ulr+ysub(n)+4*dpy),...
+%                 round(ulc+xsub(n)-4*dpx):round(ulc+xsub(n)+4*dpx))=1;
+            
+%             imagesc(maskn.*A_bgrm);
+%             
+%             caxis([0 3000])
+%             
+%             hold on
+%             scatter(xt(n)+ulc/sub,yt(n)+ulr/sub,'k+')
+%             pause(1/10000)
             masked = maskn.*A_bgrm;
-            masked = masked(ulr:ulr+s,ulc:ulc+s);
+            masked = masked(ceil(ulr/sub):floor((ulr+s)/sub),ceil(ulc/sub):floor((ulc+s)/sub));
             
             maskn = zeros(size(maskn));
             row = ystart+8*mod(n-1,size(xsub,2));
@@ -327,7 +333,7 @@ if ~precompute
     r_out = vertcat(r_outc{:});
     c_out = vertcat(c_outc{:});
     v_out = vertcat(v_outc{:});
-    A = sparse(r_out,c_out,v_out,(s+1)^2,numel(xs));
+    A = sparse(r_out,c_out,v_out,(floor((s+1)/sub))^2,numel(xs));
 else
     A_in = load('A_first_exp.mat');
     A = A_in.A;
@@ -351,9 +357,9 @@ colormap gray
 title('Input image')
 
 %Correct gamma
-lf = double(im4(:)).^2.2;
+lf = double(im4(:)).^(2.2);
 sensor = A*double(lf);
-sensor_reshaped = reshape(sensor,s+1,s+1);
+sensor_reshaped = reshape(sensor,floor((s+1)/sub),floor((s+1)/sub));
 
 figure(5),clf
 imagesc(imrotate(sensor_reshaped,90))
@@ -365,30 +371,43 @@ caxis([0 prctile(sensor,99.8)])
 
 %% Invert
 invert_in = demosaic(imread('/Users/nick.antipa/Documents/Diffusers/20150601/cman_diff_small_aperture.tif'),'bggr');
-sub = 5;
-to_invert = double(invert_in(ulr:sub:ulr+s,ulc:sub:ulc+s,2));
+%sub = 5;
+kernel_sm = ones(sub);   %Smoothing kernel
+coff = 0;
+roff = -3;
+to_invert_g = double(invert_in(ulr+roff:ulr+s+roff,ulc+coff:ulc+s+coff,2));
+to_invert_sm = imfilter(to_invert_g,kernel_sm,'symmetric');
+to_invert = to_invert_sm(1:sub:end-sub,1:sub:end-sub);
+
 %to_invert = to_invert-prctile(to_invert(:),.05);
 to_invert = to_invert-min(min(to_invert));
+
 %to_invert = to_invert-mean2(to_invert);
-to_invert1 = sensor_reshaped(1:sub:end,1:sub:end);
-b = zeros(s+1,s+1);
-b(1:sub:end,1:sub:end) = 1;
-idx = find(b);
+%to_invert1 = sensor_reshaped(1:sub:end,1:sub:end);
+% kernel_mat_sm = ones(sub,1);
+A_sm = A;
+%b = zeros(s+1,s+1);
+%b(1:sub:end,1:sub:end) = 1;
+%idx = find(b);
 figure(2)
 imagesc(imrotate(to_invert,90));
 set(gca,'position',[0 0 1 .97],'units','normalized')
 axis image
+
 title('Measured sensor image')
 caxis([prctile(to_invert(:),.1) prctile(to_invert(:),99.8)])
-
+%caxis([0 2.4e4])
+%axis([100 170 0 50])
 %Subsample A
-A_sub = A(idx,:);
+%A_sub = A_sm(idx,:);
+A_sub = A_sm;
 
 
 AtA = A_sub'*A_sub;
 
 
-lambda = 30000000;
+
+lambda = 1e5;
 
 AtA_r = (AtA+lambda*speye(size(AtA)));
 
