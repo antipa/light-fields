@@ -14,6 +14,9 @@ sensorSizeY = 50;
 %noise added to sensor
 noise = 0.000;
 
+%regularization
+lambda = 500;
+
 %read in image
 in = imread('Tanzania-0741.jpg','jpg');
 % r = double(in(:,:,1));
@@ -30,14 +33,13 @@ rowVector = round(rowVector);
 columnVector = linspace(1,c,sizeX);
 columnVector = round(columnVector);
 bw = bw(rowVector,columnVector);
-bw(:,:) = 255;
-bw(3,3) = 0;
-bw(3,7) = 0;
-bw(6,3) = 0;
-bw(7,4) = 0;
-bw(7,5) = 0;
-bw(7,6) = 0;
-bw(6,7) = 0;
+bw(:,:) = 0;
+bw(3,3) = 255;
+bw(3,7) = 255;
+bw(6,3) = 255;
+bw(7,4:6) = 255;
+bw(6,7) = 255;
+
 clf
 figure(1);
 imshow(bw);
@@ -50,7 +52,7 @@ imshow(bw);
 
 %all ones(white) in 3rd dimension because picture is 2D
 bw = im2double(bw);
-a = ones(sizeY,sizeX,sizeZ);
+a = zeros(sizeY,sizeX,sizeZ);
 a(:,:,1) = bw;
 a = reshape(a,[sizeY*sizeX*sizeZ,1]);
 
@@ -62,8 +64,12 @@ imagesc(sensorImage_reshaped);
 
 %add noise to sensor image and invert and reshape
 sensorImage_noisy = sensorImage + abs(noise*max(sensorImage)*randn(size(sensorImage)));
-recovered = (hMatrix' * hMatrix)\(hMatrix' * sensorImage_noisy);
+recovered = (hMatrix' * hMatrix + lambda * eye(size(hMatrix' * hMatrix)))\(hMatrix' * sensorImage_noisy);
 recovered_reshaped = reshape(recovered,[sizeY,sizeX,sizeZ]);
 figure(3);
 colormap gray;
-imagesc(recovered_reshaped(:,:,1));
+for v = 1:10
+imagesc(recovered_reshaped(:,:,v));
+caxis([0 max(recovered)]);
+pause(1/2);
+end
