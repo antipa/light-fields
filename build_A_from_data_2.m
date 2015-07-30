@@ -209,11 +209,11 @@ for ii = 1:4;
         %Use CVX to find coordinates of upper left corner by varying width,
         %height and deviation from known point, xgm_adj in integer steps of
         %uxp and uyp
-        c = find_upper_left(xgm_adj,im_w,im_h,dpx,dpy,uxp,uyp);
+        c = find_upper_left(xgm_adj,roi_w,roi_h,dpx,dpy,uxp,uyp,ulc,ulr);
         
         %Find optimal height and width of rectangle from fixed upper left
         %corner
-        [nlinesy,nlinesx] = find_sizes_from_ul(c,im_w,im_h,dpx,dpy,uxp,uyp);
+        [nlinesy,nlinesx] = find_sizes_from_ul(c,c(1)+roi_w,c(2)+roi_h,dpx,dpy,uxp,uyp);
         
         x0 = c';
         %Generate coordinates of each point

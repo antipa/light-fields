@@ -10,13 +10,13 @@ function c = find_upper_left(xgm,im_w,im_h,dpx_p,dpy_p,uxp,uyp,ulx,uly)
     maximize dpx_p*N+dpy_p*M
     subject to
     C = C0+P*dpx_p*uxp+Q*dpy_p*uyp;
-    C>=1;
+    C>=[ulx;uly];
     C+N*dpx_p*uxp<=d;
-    C+N*dpx_p*uxp>=ul_x;
+    %C+N*dpx_p*uxp>=ul_x;
     C+M*dpy_p*uyp<=d;
-    C+M*dpy_p*uyp>=ul_y;
+    %C+M*dpy_p*uyp>=ul_y;
     C+N*dpx_p*uxp+M*dpy_p*uyp<=d;
-    C+N*dpx_p*uxp+M*dpy_p*uyp>=;
+    %C+N*dpx_p*uxp+M*dpy_p*uyp>=;
     cvx_end
 %     c = zeros(2,4);
 %     c(:,1) = C0 + floor(P)*dpx_p*uxp + floor(Q)*dpy_p*uyp;
