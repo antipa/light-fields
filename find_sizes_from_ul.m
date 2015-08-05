@@ -4,8 +4,7 @@ d = [im_w; im_h];
 cvx_begin quiet
 variable N(1)
 variable M(1)
-variable P(1)
-variable Q(1)
+
 maximize dpx_p*N+dpy_p*M
 subject to
 C = C0_updated;

@@ -8,12 +8,52 @@ npeaks = 4;
 color = 2;   %Use 1 for red, 2 for green, 3 for blue.
 demosaic_type = 'rggb';
 cam_type = 'mono';
-im_downsize = .5;   %Use 0 for no downsizing
-roi_scale = .5;
-fname = '/Users/nick.antipa/Google Drive/Diffuser data/2_by_2_4x4_shift_1deg_closed_aperture.tif';
+im_downsize = .1;   %Use 1 for no downsizing
+roi_scale = 1;
+bg_size = 0;
+
+%Distortion numbers
+% d = -0.03;
+% %Define optical axis center manually
+% OA_c = 1200;
+% OA_r = 1200; 
+
+%Global distortion correction
+d = 0;
+OA_r = 1000
+OA_r = 1200;
+
+%off axis distortion correction - This will only get used for correcting
+%perspective and disortion that is pupil-coordinate dependent. It will
+%apply a cubic distortion correction by the amount offaxis_distortion
+%centered at OA_c+OA_dir*OA_c_offset and OA_r+OA_dir*OA_r_offset--OA_dir
+%can be used to flip direction. WHereas global distortion correction will
+%happen to all images from all angles, and must be applied to the
+%multiplexed image prior to inversion, the off axis correction will be
+%applied only to the cropping image and will NOT warp the image pixel
+%space. Rather, it is intended to warp the grid-based cropping schemed TO
+%the warped image (as opposed to warping the image to a grid). 
+
+% offaxis_distortion =  -.000000011;
+% offaxis_distortion_quadratic = .000021;
+offaxis_distortion =  0
+ offaxis_distortion_quadratic = 0
+
+OA_c_offset = 900
+OA_r_offset = 0;
+OA_dir = -1;   %Use -1 for negative OA_offset
+
+%Image used to determine grid
+grid_image = '/Users/nick.antipa/Documents/Diffusers/1deg_stereo/calib_both_true.tif';
+grid_image = [];
+
+
+
+%fname = '/Users/nick.antipa/Google Drive/Diffuser data/5_by_5_4x4_shift_0p5_deg_closed.tif'
+fname = '/Users/nick.antipa/Documents/Diffusers/half_deg_stereo_20150804/left_white_5px_6x6.tif';
 info = imfinfo(fname);
-im_start = 3;
-nshifts = 4;
+im_start = 5; 
+nshifts = 6;
 im_list = im_start:2:(2*nshifts^2+im_start-1);
 im_in = zeros(info(1).Height,info(1).Width,numel(im_list));
 count = 0;
@@ -35,48 +75,52 @@ if compute_roi
     roi_w = s;
     roi_h = s;
 else
-    ulr = 400;
-    ulc = 400;
+    ulr = 1;
+    ulc = 1;
     roi_w = info(1).Width*roi_scale;
     roi_h = info(1).Height*roi_scale; 
 end
 im_w = info(1).Width;
 im_h = info(1).Height;
 %% Correct geometric distortion
-d = -0.03;
-%Define optical axis center manually
-OA_c = 1200;
-OA_r = 1200; 
-im_x = (1:im_w)-OA_c;
-im_y = (1:im_h)-OA_r;
-[im_X,im_Y] = meshgrid(im_x,im_y);
-im_rho = sqrt(im_X.^2+im_Y.^2);
-im_rho = im_rho;
-im_th = atan2(im_Y,im_X);
-im_rhop = im_rho + max(im_rho(:))*d*(im_rho/max(im_rho(:))).^3;
-X_p = im_rhop.*cos(im_th);
-Y_p = im_rhop.*sin(im_th);
-%To do: X and Y are currently normalized. FIx that!
-im_in_dist = zeros(size(im_in));
-for k = 1:size(im_in,3)
-    im_in_dist(:,:,k) = interp2(im_X,im_Y,im_in(:,:,k),X_p,Y_p);
-    imagesc(im_in_dist(:,:,k));
-    axis image
-    pause(1/100)
+if d~=0
+    im_x = (1:im_w)-OA_c;
+    im_y = (1:im_h)-OA_r;
+    [im_X,im_Y] = meshgrid(im_x,im_y);
+    im_rho = sqrt(im_X.^2+im_Y.^2);
+    im_rho = im_rho;
+    im_th = atan2(im_Y,im_X);
+    im_rhop = im_rho + max(im_rho(:))*d*(im_rho/max(im_rho(:))).^3;
+    X_p = im_rhop.*cos(im_th);
+    Y_p = im_rhop.*sin(im_th);
+    %To do: X and Y are currently normalized. FIx that!
+    im_in_dist = zeros(size(im_in));
+    for k = 1:size(im_in,3)
+        im_in_dist(:,:,k) = interp2(im_X,im_Y,im_in(:,:,k),X_p,Y_p);
+        imagesc(im_in_dist(:,:,k));
+        axis image
+        pause(1/100)
+    end
+else
+    im_in_dist = im_in;
 end
-
+%%
 clear im_in
 clear im_rhop
 clear im_rho
-clear im_X
-clear im_Y
-clear X_p
-clear Y_p
+
+
 %% Figure out grid
+
 x = 1:im_w;
 y = 1:im_h;
 pad = 5;
-spect = fftshift(fft2(im_in_dist(:,:,1)-mean2(im_in_dist(:,:,1)),pad*im_h,pad*im_w));
+if isempty(grid_image)
+    spect = fftshift(fft2(im_in_dist(:,:,1)-mean2(im_in_dist(:,:,1)),pad*im_h,pad*im_w));
+else
+    grid_im_in = imread(grid_image);
+    spect = fftshift(fft2(grid_im_in-mean2(grid_im_in),pad*im_h,pad*im_w));
+end
 fx = linspace(-1/2/mean(diff(x)),1/2/mean(diff(x)),pad*numel(x));
 fy = linspace(-1/2/mean(diff(y)),1/2/mean(diff(y)),pad*numel(y));
 
@@ -152,8 +196,14 @@ clear im_th
 ufx = [1;mx];
 ufx = ufx/norm(ufx);
 
-ufy = [1/my;1];
-ufy = ufy/norm(ufy);
+%Check for infinite slope
+if ~isnan(my)  
+    ufy = [1/my;1];
+    ufy = ufy/norm(ufy);
+else
+    ufy = [0;
+           1];
+end
 
 xproj = sort(ufy'*[xx';xy']);
 yproj = sort(ufx'*[yx';yy']);
@@ -163,6 +213,8 @@ dfy = mean(diff(yproj));
 
 dpx = 1/dfx;
 dpy = 1/dfy;
+
+
 
 %% display grid
 h3 = figure(3);
@@ -178,8 +230,12 @@ axis image
 hold on
 
 %Calculate grid line directions
-ux = [1,-1/my];
-ux = ux/norm(ux);
+if ~isnan(my)
+    ux = [1,-1/my];
+    ux = ux/norm(ux);   
+else
+    ux = [1 0];
+end
 uxp = ux';
 
 uy = [-mx,1];
@@ -189,18 +245,22 @@ uyp = uy';
 
 % nlinesx = 14*2;
 % nlinesy = 12*2;
-%xgm = [1269 1087];   %xy coord of grid center
-xgm = [1300 1013];
+xgm = [1108 1073]; %for 1/2 deg white 20150804 left
+%xgm = [1011 1060];for 1/2 deg white 20150804 right
+%xgm = [1269 1087];   1/2 deg %xy coord of grid center
+%xgm = [1300 1013];  %xy coord of center for 1 deg diffuser
 ul_saved = zeros(2,nshifts^2);
 nx_saved = zeros(1,nshifts^2);
 ny_saved = zeros(1,nshifts^2);
-for ii = 1:4;
-    for jj = 1:4
+for ii = 1:nshifts
+    for jj = 1:nshifts
         set(0,'CurrentFigure',h3)
         %clf
         %imagesc(im_in_dist(:,:,4*(ii-1)+jj))
-        hold on
-        ind = 4*(ii-1)+jj;
+        %hold on
+        
+        ind = nshifts*(ii-1)+jj;
+        imagesc(imresize(im_in_dist(:,:,ind),im_downsize));
         axis image
         x3 = [];
         x5 = [];
@@ -213,13 +273,34 @@ for ii = 1:4;
         
         %Find optimal height and width of rectangle from fixed upper left
         %corner
-        [nlinesy,nlinesx] = find_sizes_from_ul(c,c(1)+roi_w,c(2)+roi_h,dpx,dpy,uxp,uyp);
+        [nlinesy,nlinesx] = find_sizes_from_ul(c,ulc+roi_w,ulc+roi_h,dpx,dpy,uxp,uyp)
         
         x0 = c';
         %Generate coordinates of each point
         %xpp is a list of all xy points, each column is a point.
         xpp = grid_intersections(x0,ux,uy,dpx,dpy,nlinesx,nlinesy);
         
+        if offaxis_distortion~=0
+%             bg = double(opening(unif(im_calib,5),75));
+%             b = watershed(2e16-gaussf(im_calib,21),2);
+%             lab = bwlabel(~double(b));
+%             msr = regionprops(lab,im_calib-bg,'WeightedCentroid');
+            
+            OA_total_offset_x = (OA_c+OA_dir*OA_c_offset);
+            OA_total_offset_y = (OA_r+OA_dir*OA_r_offset);
+            dist_x = xpp(1,:)-OA_total_offset_x;
+            dist_y = xpp(2,:)-OA_total_offset_y;
+            rho_pp = sqrt(dist_x.^2+dist_y.^2);
+            rho_pp_d = rho_pp+offaxis_distortion_quadratic*rho_pp.^2+...
+                offaxis_distortion*rho_pp.^3;
+            im_th = atan2(dist_y,dist_x);
+	
+            %X_p = im_rhop.*cos(im_th);
+            undist_x = rho_pp_d.*cos(im_th)+OA_total_offset_x;
+            undist_y = rho_pp_d.*sin(im_th)+OA_total_offset_y;
+            xpp = cat(1,undist_x,undist_y);
+        end
+            
         ul_saved(:,ind) = c;
         nx_saved(ind) = nlinesx;
         ny_saved(ind) = nlinesy;
@@ -253,12 +334,12 @@ for ii = 1:4;
             end
             
         end
-        axis([0 im_w*im_downsize 0 im_h*im_downsize])
+        axis(im_downsize*[ulc ulc+roi_w ulr ulr+roi_h])
         %axis([0 200 -20 70])
         %axis([30 500 -20 700])
         set(gca,'position',[0 0 1 .97],'units','normalized')
         axis off
-        pause(1/2)
+        pause(1/5)
         
     end
 end
@@ -276,36 +357,35 @@ sub_est_z = sub_est+repmat([1-min(sub_est(1,:));1-min(sub_est(2,:))],[1,nshifts^
 %the list.
 ind_est = sub2ind([nshifts,nshifts],sub_est_z(2,:),sub_est_z(1,:));
 
-
+c0 = ul_saved(:,find(ind_est==1));
 figure(5),clf
-axis([0 120 0 120])
+axis([c0(1) c0(1)+dpx c0(2) c0(2)+dpy])
 hold on
+[s si] = sort(ind_est);
 for m = 1:nshifts^2
-    scatter(ul_saved(1,ind_est(m)),ul_saved(2,ind_est(m)))
+    scatter(ul_saved(1,si(m)),ul_saved(2,si(m)))
     pause(1/5)
 end
-
-
 
 
 %% Read in each diffuser image and crop
 h4 = figure(4),clf
 npts = sum((nx_saved+1).*(ny_saved+1));
-c0 = ul_saved(:,find(ind_est==1));
-[ny_total, nx_total] = find_sizes_from_ul(c0,im_w,im_h,dpx/4,dpy/4,uxp,uyp);
+
+[ny_total, nx_total] = find_sizes_from_ul(c0,ulc+roi_w,ulr+roi_h,dpx/nshifts,dpy/nshifts,uxp,uyp);
 nrows = ny_total+1;
 ncols = nx_total+1;
 if npts~=(nrows*ncols)
     error('total rows and columns disagrees with total points')
 end
-
+%%
 if ~precompute
     
     
     kernel = fspecial('Gaussian',65,15);
     kernel1 = fspecial('Gaussian',35,11);
-
-    SE = strel('disk',45);    %background removal strel
+    
+    SE = strel('disk',bg_size);    %background removal strel
     
     %Prepare cell arrays for sparse value storage.
   
@@ -320,14 +400,22 @@ if ~precompute
         im_in_diff = im_in_dist(:,:,m);
         
         %Filter image and subtract background
-        filtered1 = imfilter(im_in_diff,kernel1);
-        bg = imopen(filtered1,SE);
-        A_bgrm_full = double(im_in_diff-bg);
-        A_bgrm_full(A_bgrm_full<0) = 0;
+        if bg_size>1
+            filtered1 = imfilter(im_in_diff,kernel1);
+
+            bg = imopen(filtered1,SE);
+            A_bgrm_full = double(im_in_diff-bg);
+            A_bgrm_full(A_bgrm_full<0) = 0;
+        else
+            A_bgrm_full = double(im_in_diff);
+            fprintf('using original\n')
+        end
         A_bgrm = imresize(A_bgrm_full,im_downsize);
+        A_bgrm = A_bgrm(ceil(im_downsize*ulr:im_downsize*(ulr+roi_h)-1),...
+            ceil(im_downsize*ulc:im_downsize*(ulc+roi_w)-1));
         %imagesc(A_bgrm)
         
-        ul = ul_saved(:,m)*im_downsize;
+        ul = (ul_saved(:,m)-[ulc;ulr])*im_downsize;
         nlinesx = nx_saved(m);
         nlinesy = ny_saved(m);
         dpx_scl = im_downsize*dpx;
@@ -335,7 +423,32 @@ if ~precompute
         xpp = grid_intersections(ul',ux,uy,dpx_scl,dpy_scl,nlinesx,nlinesy);
         x = 1:size(A_bgrm,2);
         y = 1:size(A_bgrm,1);
-        [X,Y] = meshgrid(x,y);
+%             im_x = (1:im_w)-OA_c;
+%     im_y = (1:im_h)-OA_r;
+%     [im_X,im_Y] = meshgrid(im_x,im_y);
+%     im_rho = sqrt(im_X.^2+im_Y.^2);
+%     im_rho = im_rho;
+%     im_th = atan2(im_Y,im_X);
+%     im_rhop = im_rho + max(im_rho(:))*d*(im_rho/max(im_rho(:))).^3;
+%     X_p = im_rhop.*cos(im_th);
+%     Y_p = im_rhop.*sin(im_th);
+        if offaxis_distortion~=0
+            im_x = x-OA_total_offset_x;
+            im_y = y-OA_total_offset_y;
+            [im_X,im_Y] = meshgrid(im_x,im_y);
+            
+            rho_pp = sqrt(im_X.^2+im_Y.^2);
+            rho_pp_d = rho_pp-offaxis_distortion_quadratic*rho_pp.^2-...
+                offaxis_distortion*rho_pp.^3;
+            im_th = atan2(im_Y,im_X);
+	
+            %X_p = im_rhop.*cos(im_th);
+            X = rho_pp_d.*cos(im_th)+OA_total_offset_x;
+            Y = rho_pp_d.*sin(im_th)+OA_total_offset_y;
+            
+        else
+            [X,Y] = meshgrid(x,y);
+        end
         
         
         for n = 1:size(xpp,2)
@@ -354,7 +467,7 @@ if ~precompute
 %             imagesc(masked)
 %             axis image
 %             pause(1/100)
-            clear maskn
+            maskn = zeros(size(maskn));
             %Row and col offset based on ordering
             r_off = sub_est_z(2,m);
             c_off = sub_est_z(1,m);
@@ -375,7 +488,7 @@ if ~precompute
         set(gca,'YDir','reverse')
         % axis([500 1000 500 1000])
         set(gca,'position',[0 0 1 1],'units','normalized')
-        
+        hold off
         pause(1/2)
     end
     
