@@ -1,6 +1,24 @@
 function [uxp, uyp, uzp] = refraction(Fxr, Fyr, th, ph, index, index_p, varargin)
-%First optional input is either 'angles' or 'cosines'. Second optional input is a uzn vector
-%if using cosines.  
+%This function is for refracting light rays through a surface and getting
+%the output direction cosines.
+%------Inputs--------
+%Fxr: (column vector) gradient of the surface in x-direction.
+%Fyr: (column vector) gradient of the surface in y-direction.
+%th: (column vector) angle in degrees in theta direction of the light rays (see optional inputs).
+%ph: (column vector) angle in degrees in phi direction of the light rays (see optional inputs).
+%index: (scalar) index of refraction of the medium the rays start in.
+%index_p: (scalar) index of refraction of the medium the rays end in.
+%------Optional Inputs------
+%First optional input is either 'angles' or 'cosines'.
+%If using 'cosines', th and ph inputs are cosine direction column vectors in the
+%x- and y-directions respectively. Must also have a second optional input, 
+%which is a z-direction cosine vector (column vector).
+%If no optional inputs, assuming th and ph inputs are angles in degrees.
+%-----Outputs---------
+%uxp: (column vector) x-direction cosines after refraction.
+%uyp: (column vector) y-direction cosines after refraction.
+%uzp: (column vector) z-direction cosines after refraction.
+
 if strcmp(varargin{1},'cosines')
   uxn = th;
   uyn = ph;
