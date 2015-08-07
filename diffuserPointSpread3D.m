@@ -1,7 +1,7 @@
 %object dimensions in voxels
-vx = 10; %in x-direction
-vy = 10; %in y-direction
-vz = 10; %in z-direction
+vx = 1; %in x-direction
+vy = 1; %in y-direction
+vz = 1; %in z-direction
 
 %voxel dimensions in microns
 voxX = 10;
@@ -12,8 +12,8 @@ voxZ = 100;
 rays = 10000000;
 
 %angle spread of rays, in degrees
-thetaSpread = 2;
-phiSpread = 2;
+thetaSpread = 5;
+phiSpread = 5;
 
 %define number of planes in z-direction for each voxel
 k = 1;
@@ -22,7 +22,7 @@ k = 1;
 dz = voxZ/k;
 
 %distance from closest plane of voxel to diffuser, in microns
-z0 = 0;
+z0 = 100;
 
 %distance from diffuser to sensor, in microns
 z1 = 200;
@@ -37,7 +37,7 @@ y_range = 150; %total range of sensor in y-direction, in microns
 raysPerVoxel = round(rays./(vx*vy*vz));
 
 %diffuser properties
-strength = 50;
+strength = 0;
 indexEnv = 1;
 indexDiff = 1.5;
 diff_upsample = false;
@@ -62,9 +62,10 @@ px = mean(diff(x)); %diffuser "pixel" size in um/pixel, physical units
 
 [Fx, Fy] = gradient(diffuser);
 
-%initialize the histogram
+%initialize the measurement matrix
 hMatrix = zeros(npx*npy,vx*vy*vz);
 
+count = 0;
 for a = 1:vx
     for b = 1:vy
         %repeat for each plane in z-direction
@@ -81,11 +82,11 @@ for a = 1:vx
                 z = z0 + voxZ * (c-1) + dz * (j-1);
                 
                 %propagate rays to the diffuser
-                xo = z * tand(th) + xr;
-                yo = z * tand(ph) + yr;
+                xo = z * tand(th) + xr + 25;
+                yo = z * tand(ph) + yr + 25;
                 
-                Fyr = interp2(x,y,Fy,xo,yo);
-                Fxr = interp2(x,y,Fx,xo,yo);
+                Fyr = interp2(x(1:ceil(max(xo))+5),y(1:ceil(max(yo))+5),Fy((1:ceil(max(yo))+5),(1:ceil(max(xo))+5)),xo,yo);
+                Fxr = interp2(x(1:ceil(max(xo))+5),y(1:ceil(max(yo))+5),Fx((1:ceil(max(yo))+5),(1:ceil(max(xo))+5)),xo,yo);
                 
                 %throwing out points that did not hit the diffuser and could
                 %not be interpolated
@@ -106,11 +107,16 @@ for a = 1:vx
                 %create image at the sensor using 2D histogramming
                 dpx = x_range/npx;
                 dpy = y_range/npy;
-                gatherer = gatherer + gather_rays_nohist(xo,yo,npx,npy,dpx,dpy,0,0,px);
-%                 imagesc(gatherer);
-%                 pause(1/24);
+                gatherer = gatherer + hist4(xo,yo,npx,npy,dpx,dpy,0,0,px);
+                %imagesc(gatherer);
+                %pause(1/24);
             end
+            %adding a column of the H matrix
             hMatrix(:,(sub2ind([vy,vx,vz],b,a,c))) = gatherer(:);
+            
+            %count to display progress to user
+            count = count + 1;
+            [num2str(count) '/' num2str(vx*vy*vz)]
         end
     end
 end
