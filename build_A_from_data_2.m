@@ -21,7 +21,7 @@ bg_size = 0;
 %Global distortion correction
 d = 0;
 OA_r = 1000
-OA_r = 1200;
+OA_c = 1200;
 
 %off axis distortion correction - This will only get used for correcting
 %perspective and disortion that is pupil-coordinate dependent. It will
@@ -34,14 +34,14 @@ OA_r = 1200;
 %space. Rather, it is intended to warp the grid-based cropping schemed TO
 %the warped image (as opposed to warping the image to a grid). 
 
-% offaxis_distortion =  -.000000011;
-% offaxis_distortion_quadratic = .000021;
-offaxis_distortion =  0
- offaxis_distortion_quadratic = 0
+offaxis_distortion =  -.000000011;
+offaxis_distortion_quadratic = .000021;
+% offaxis_distortion =  0;
+%  offaxis_distortion_quadratic = 0;
 
 OA_c_offset = 900
 OA_r_offset = 0;
-OA_dir = -1;   %Use -1 for negative OA_offset
+OA_dir = 1;   %Use -1 for negative OA_offset
 
 %Image used to determine grid
 grid_image = '/Users/nick.antipa/Documents/Diffusers/1deg_stereo/calib_both_true.tif';
@@ -245,8 +245,10 @@ uyp = uy';
 
 % nlinesx = 14*2;
 % nlinesy = 12*2;
-xgm = [1108 1073]; %for 1/2 deg white 20150804 left
+xgm = [1100 1073]; %for 1/2 deg white 20150804 left
 %xgm = [1011 1060];for 1/2 deg white 20150804 right
+%xgm = [1084 1057];   %For 1 deg white 6x6 right 20150804
+%xgm = [1868 1050];    %For 1 deg white 6x6 left 20150804
 %xgm = [1269 1087];   1/2 deg %xy coord of grid center
 %xgm = [1300 1013];  %xy coord of center for 1 deg diffuser
 ul_saved = zeros(2,nshifts^2);
@@ -383,7 +385,7 @@ if ~precompute
     
     
     kernel = fspecial('Gaussian',65,15);
-    kernel1 = fspecial('Gaussian',35,11);
+    kernel1 = fspecial('Gaussian',3511);
     
     SE = strel('disk',bg_size);    %background removal strel
     
@@ -433,8 +435,8 @@ if ~precompute
 %     X_p = im_rhop.*cos(im_th);
 %     Y_p = im_rhop.*sin(im_th);
         if offaxis_distortion~=0
-            im_x = x-OA_total_offset_x;
-            im_y = y-OA_total_offset_y;
+            im_x = x/im_downsize-OA_total_offset_x;
+            im_y = y/im_downsize-OA_total_offset_y;
             [im_X,im_Y] = meshgrid(im_x,im_y);
             
             rho_pp = sqrt(im_X.^2+im_Y.^2);
@@ -443,8 +445,8 @@ if ~precompute
             im_th = atan2(im_Y,im_X);
 	
             %X_p = im_rhop.*cos(im_th);
-            X = rho_pp_d.*cos(im_th)+OA_total_offset_x;
-            Y = rho_pp_d.*sin(im_th)+OA_total_offset_y;
+            X = im_downsize*(rho_pp_d.*cos(im_th)+OA_total_offset_x);
+            Y = im_downsize*(rho_pp_d.*sin(im_th)+OA_total_offset_y);
             
         else
             [X,Y] = meshgrid(x,y);
@@ -458,7 +460,7 @@ if ~precompute
             xmask = X-xpp(1,n);
             ymask = Y-xpp(2,n);
             
-            pow = 14;
+            pow = 10;
             supergauss = exp(-(xmask.^pow+ymask.^pow)/((dpx_scl/1.96).^pow));
             maskn = (abs(xmask)<=dpx_scl/1.5) & (abs(ymask)<=dpy_scl/1.5);
             maskn = maskn.*supergauss;
@@ -468,6 +470,7 @@ if ~precompute
 %             axis image
 %             pause(1/100)
             maskn = zeros(size(maskn));
+            colormap default
             %Row and col offset based on ordering
             r_off = sub_est_z(2,m);
             c_off = sub_est_z(1,m);
