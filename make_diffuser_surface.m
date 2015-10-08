@@ -4,11 +4,11 @@
 %frequency over 2d grid defined by vectors x and y
 write_file = 0
 save_m = 1
-[X, Y] = meshgrid(-3000:1:3000,-3000:1:3000);   %in microns
-period = 10;                %microns
+[X, Y] = meshgrid(-2540:1:2540,-2540:1:2540);   %in microns
+period = 20;                %microns
 nrows = size(X,1);
 ncols = size(X,2);
-
+fname = '../Output/half_deg.mat';
 if size(X)~=size(Y)
     error('X and Y must be same size')
 end
@@ -42,7 +42,7 @@ if write_file
 end
 if save_m
     x = X(1,:);
-    save('diffuser.mat','x','filtered')
+    save(fname,'x','filtered')
 end
 %%
 %Trace ray
