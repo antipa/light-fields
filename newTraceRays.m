@@ -1,69 +1,83 @@
 %also added index variable
 %gets data from tracerays_settings.m
-try
-    tracerays_settings;
-catch exception
-   display('Error loading settings. Read instructions in tracerays_settings.m.template.'); 
+use_defaults = 1
+if use_defaults
+    try
+        tracerays_settings;
+    catch exception
+       display('Error loading settings. Read instructions in tracerays_settings.m.template.'); 
+    end
+else
+    %You need to load settings externally!
 end
+
 
 %get diffuser surface
 
 %Notes:
 %Make sensor size dynamic
-
-profile on
-in = load('../Output/diffuser.mat');
-diffuser_in = in.filtered * strength;
-x = in.x;
-if diff_upsample
-    diffuser = imresize(diffuser_in,diff_upsample,'bicubic');
-    x = linspace(min(x),max(x),numel(x)*diff_upsample);
+if settings.code_profiler
+    profile on
+end
+if ~settings.preload_diff
+    %in = load('../Output/diffuser.mat');
+    %in = load('../Output/1deg_20151121_diffuser.mat');   %Pretty good ho_tie result. Scaled wrong.
+    %in = load('../Output/1deg_diffuser_surface_gptie.mat');
+    in = load('/Users/nick.antipa/Documents/MATLAB/Output/1deg_magnified_gptie_surface.mat');
+    diffuser_in = in.filtered * settings.strength;
+    x = in.x;
+end
+if settings.diff_upsample
+    diffuser = imresize(diffuser_in,settings.diff_upsample,'bicubic');
+    x = linspace(min(x),max(x),numel(x)*settings.diff_upsample);
 else
     diffuser = diffuser_in;
 end
 y = x;
 px = mean(diff(x)); %diffuser "pixel" size in um/pixel
-
-range_idx = floor(x_range/px);
-dx_idx = floor(x_range/N/px);
+clear in
+range_idx = floor(settings.x_range/px);
+dx_idx = floor(settings.x_range/settings.N/px);
 if dx_idx<1
     dx_idx = 1;
 end
 
 y_idx = (y-min(y))/px;   %x vector as index
-range_idy = floor(y_range/px);
-dy_idx = floor(y_range/M/px);
+range_idy = floor(settings.y_range/px);
+dy_idx = floor(settings.y_range/settings.M/px);
 if dy_idx<1
     dy_idx = 0;
 end
 
-ssize = [max(y_range,1), max(x_range,1)];   %Sensor size in microns
-dpx = ssize(2)/npx;
-dpy = ssize(1)/npy;
+ssize = [max(settings.y_range,1), max(settings.x_range,1)];   %Sensor size in microns
+%dpx = ssize(2)/settings.npx;
+%dpy = ssize(1)/settings.npy;
+dpx = px;
+dpy = px;
 xs = min(x):dpx:max(x);
 ys = xs;
 
-if y_range == 0
-    npy = 1;
-    ph_range = 0;
+if settings.y_range == 0
+    settings.npy = 1;
+    settings.ph_range = 0;
 end
 
-if x_range == 0
-    npx = 1;
-    th_range = 0;
+if settings.x_range == 0
+    settings.npx = 1;
+    settings.th_range = 0;
 end
-dph = ph_range/P;
-dth = th_range/Q;
-if ~useParfor
+dph = settings.ph_range/settings.P;
+dth = settings.th_range/settings.Q;
+if ~settings.useParfor
     %creates sparse form of matrix
-    A_sub = sparse(npx*npy,N*M*P*Q);
+    A_sub = sparse(settings.npx*settings.npy,settings.N*settings.M*settings.P*settings.Q);
 end
 %preallocate
-A_row_index = cell(M*N*P*Q,1);  %Row index fo
+A_row_index = cell(settings.M*settings.N*settings.P*settings.Q,1);  %Row index fo
 A_vals = A_row_index;
-r_outc = cell(M*N*P*Q,1);
-c_outc = cell(M*N*P*Q,1);
-v_outc = cell(M*N*P*Q,1);
+r_outc = cell(settings.M*settings.N*settings.P*settings.Q,1);
+c_outc = cell(settings.M*settings.N*settings.P*settings.Q,1);
+v_outc = cell(settings.M*settings.N*settings.P*settings.Q,1);
 
 %Setup gradients
 if dy_idx == 0
@@ -75,66 +89,67 @@ elseif dx_idx == 0
 else
     [Fx, Fy] = gradient(diffuser);
 end
+Fx = Fx/dpx;
+Fy = Fy/dpy;
 
 %Setup figure windows and handles for visualization
-if vis
+if settings.vis
     h1 = figure(1);
     clf
     h2 = figure(2);
     clf
 end
-if vis_prop
+if settings.vis_prop
     h3 = figure(3);
     clf
 end
-if vis_sensor
+if settings.vis_sensor
     h4 = figure(4);
     clf
 end
-if ~useParfor
+if ~settings.useParfor
     h5 = waitbar(0,'beginning');
 end
 %Loop over grid positions on surface
 [Xg, Yg] = meshgrid(-dx_idx*px/2:px:dx_idx*px/2,-dx_idx*px/2:px:dx_idx*px/2);
 tstart1 = tic;
-if useParfor
-    parfor LF_index = 1:M*N*P*Q
+if settings.useParfor
+    parfor LF_index = 1:settings.M*settings.N*settings.P*settings.Q
         ytstart = tic;
-        qq = 1+mod(LF_index-1,Q);
-        pp = 1+mod(floor(LF_index/Q),P);
-        nn = 1+mod(floor(LF_index/P/Q),N);
-        mm = 1+mod(floor(LF_index/P/Q/N),M);
+        qq = 1+mod(LF_index-1,settings.Q);
+        pp = 1+mod(floor((LF_index-1)/settings.Q),settings.P);
+        nn = 1+mod(floor((LF_index-1)/settings.P/settings.Q),settings.N);
+        mm = 1+mod(floor((LF_index-1)/settings.P/settings.Q/settings.N),settings.M);
         %Get indices of region in y direction
         midx = (((mm-1)*dy_idx+1):(mm*dy_idx+1))';
         midx_1 = midx(1);
         %Generate y vector in physical units in local coordinates
         %(i.e. origin shifts wich each new region
         yg = px*(midx-midx(1));
-        %yr = dx_idx*px*(rand(nrays,1));
+        %yr = dx_idx*px*(rand(settings.nrays,1));
         
         nidx = (((nn-1)*dx_idx+1):(nn*dx_idx+1))';
         nidx_1 = nidx(1);
         xg = (nidx-nidx(1))*px;
-        diff_crop = diffuser(midx,nidx);
         
         %[NIDX, MIDX] = meshgrid(nidx,midx);
         
         Fx_crop = Fx(midx,nidx);
         Fy_crop = Fy(midx,nidx);
         
-        %LF_index_start = P*Q*N*(mm-1)+P*Q*(nn-1);
-        %LF_index_start = P*Q*N*(mm-1)+P*Q*(nn-1)+Q*(pp-1);
+        %LF_index_start = settings.P*settings.Q*settings.N*(mm-1)+settings.P*settings.Q*(nn-1);
+        %LF_index_start = settings.P*settings.Q*settings.N*(mm-1)+settings.P*settings.Q*(nn-1)+settings.Q*(pp-1);
         
         
         
-        ph = dph*(rand(nrays,1)-pp+P/2);
-        th = dth*(rand(nrays,1)-qq+Q/2); %random theta points
+        ph = dph*(rand(settings.nrays,1)-pp+settings.P/2);
+        th = dth*(rand(settings.nrays,1)-qq+settings.Q/2); %random theta points
         
         
         %Generate random (x,y) positions within dx_idx*px wide
         %square
-        yr = (dy_idx)*px*rand(nrays,1);
-        xr = (dx_idx)*px*rand(nrays,1);
+        yr = (dy_idx)*px*rand(settings.nrays,1);
+        xr = (dx_idx)*px*rand(settings.nrays,1);
         
         
         %Calculate surface norm at random positions by
@@ -151,24 +166,32 @@ if useParfor
             %zr = interp1(yg,diff_crop,yr);   %Interpolate surface
         else
             %zr = interp2(xg,yg,diff_crop,xr,yr);   %Interpolate surface
-            Fxr = interp2(xg,yg,Fx_crop,xr,yr);  %Interpolate x gradient
-            Fyr = interp2(xg,yg,Fy_crop,xr,yr);  %Interpolate y gradiet
+            if strcmpi(settings.interp_method,'nearest')
+                Fxr = interp2(xg,yg,Fx_crop,xr,yr,settings.interp_method);  %Interpolate x gradient
+                Fyr = interp2(xg,yg,Fy_crop,xr,yr,settings.interp_method);  %Interpolate y gradiet
+            else
+                Fxr = interp2(xg,yg,Fx_crop,xr,yr);  %Interpolate x gradient
+                Fyr = interp2(xg,yg,Fy_crop,xr,yr);  %Interpolate y gradiet
+            end
         end
         
-        %Refraction starts here ---------------------
-        [uxp, uyp, uzp] = refraction(Fxr, Fyr, th, ph, indexDiff, indexEnv,'angles');
-        %End refraction-------------
+        if ~settings.paraxial
+            %Refraction starts here ---------------------
+            [uxp, uyp, uzp] = refraction(Fxr, Fyr, th, ph, settings.indexDiff, settings.indexEnv,'angles');
+            %End refraction-------------
+
+            %propagate to output plane by a distance z
+            [yo, xo] = propagation(uyp, uzp, settings.z0, yr, uxp, xr);
+            %                 yo = uyp./uzp*settings.z0+yr;
+            %                 xo = uxp./uzp*settings.z0+xr;
+        elseif settings.paraxial
+            %yoxo = [yr,xr]+settings.z0*[settings.dn*Fyr+ph*pi/180*settings.indexDiff,settings.dn*Fxr+th*pi/180*settings.indexDiff];
+            xo = xr+settings.z0*(settings.dn*Fxr+th*pi/180*settings.indexDiff);
+            yo = yr+settings.z0*(settings.dn*Fyr+ph*pi/180*settings.indexDiff);
+
+        end
         
-        %propagate to output plane by a distance z
-        [yo, xo] = propagation(uyp, uzp, z0, yr, uxp, xr);
-        %                 yo = uyp./uzp*z0+yr;
-        %                 xo = uxp./uzp*z0+xr;
-        
-        %Gather rays on sensor
-        
-        gatherer = hist4(xo,yo,npx,npy,dpx,dpy,nidx_1,midx_1,px);
-        
-        
+        gatherer = gather_rays_nohist(xo,yo,settings.npx,settings.npy,dpx,dpy,nidx_1,midx_1,px);
         %Only gather rays if we've got more than 1 ray. It sounds
         %dumb, but the hist code doesn't work when there's 1 ray,
         %and I don't care about a single ray anyway.
@@ -179,15 +202,15 @@ if useParfor
         end
     end
 else
-    for mm = 1:max(1,M)
+    for mm = 1:max(1,settings.M)
         ytstart = tic;
         %Get indices of region in y direction
         midx = (((mm-1)*dy_idx+1):(mm*dy_idx+1))';
         %Generate y vector in physical units in local coordinates
         %(i.e. origin shifts wich each new region
         yg = px*(midx-midx(1));
-        %yr = dx_idx*px*(rand(nrays,1));
-        for nn = 1:max(1,N)
+        %yr = dx_idx*px*(rand(settings.nrays,1));
+        for nn = 1:max(1,settings.N)
             nidx = (((nn-1)*dx_idx+1):(nn*dx_idx+1))';
             xg = (nidx-nidx(1))*px;
             diff_crop = diffuser(midx,nidx);
@@ -196,16 +219,16 @@ else
             
             Fx_crop = Fx(midx,nidx);
             Fy_crop = Fy(midx,nidx);
-            for pp = 1:P
-                ph = dph*(rand(nrays,1)-pp+P/2);    %Random phi points
-                for qq = 1:Q
+            for pp = 1:settings.P
+                ph = dph*(rand(settings.nrays,1)-pp+settings.P/2);    %Random phi points
+                for qq = 1:settings.Q
                     tstart = tic;
-                    th = dth*(rand(nrays,1)-qq+Q/2); %random theta points
+                    th = dth*(rand(settings.nrays,1)-qq+settings.Q/2); %random theta points
                     
                     %Generate random (x,y) positions within dx_idx*px wide
                     %square
-                    yr = (dy_idx)*px*rand(nrays,1);
-                    xr = (dx_idx)*px*rand(nrays,1);
+                    yr = (dy_idx)*px*rand(settings.nrays,1);
+                    xr = (dx_idx)*px*rand(settings.nrays,1);
                     
                     
                     %Calculate surface norm at random positions by
@@ -226,19 +249,31 @@ else
                         Fyr = interp2(xg,yg,Fy_crop,xr,yr);  %Interpolate y gradiet
                     end
                     
+                    if ~settings.paraxial
+                        %Refraction starts here ---------------------
+                        [uxp, uyp, uzp] = refraction(Fxr, Fyr, th, ph, settings.indexDiff, settings.indexEnv,'angles');
+                        %End refraction-------------
+
+                        %propagate to output plane by a distance z
+                        [yo, xo] = propagation(uyp, uzp, settings.z0, yr, uxp, xr);
+                        %                 yo = uyp./uzp*settings.z0+yr;
+                        %                 xo = uxp./uzp*settings.z0+xr;
+                    elseif settings.paraxial
+                        %yoxo = [yr,xr]+settings.z0*[settings.dn*Fyr+ph*pi/180*settings.indexDiff,settings.dn*Fxr+th*pi/180*settings.indexDiff];
+                        xo = xr+settings.z0*(settings.dn*Fxr+th*pi/180*settings.indexDiff);
+                        yo = yr+settings.z0*(settings.dn*Fyr+ph*pi/180*settings.indexDiff);
+                        %x_retina = x_pupil+z*(dW(x_pupil)/dx+theta_pupil)
+                        %n1*sin(phi1)=n2*sin(phi2) ~=
+                        %n1*phi1=n2*phi2
+                        %W = (n_lens - n_air)*Z(x,y)
+               
+                        
+                    end
                     
-                    %Refraction starts here ---------------------
-                    [uxp, uyp, uzp] = refraction(Fxr, Fyr, th, ph, indexDiff, indexEnv,'angles');
-                    %End refraction-------------
-                    
-                    %propagate to output plane by a distance z
-                    [yo, xo] = propagation(uyp, uzp, z0, yr, uxp, xr);
-                    %                 yo = uyp./uzp*z0+yr;
-                    %                 xo = uxp./uzp*z0+xr;
-                    
+                    gatherer = gather_rays_nohist(xo,yo,settings.npx,settings.npy,dpx,dpy,nidx(1),midx(1),px);
                     %Gather rays on sensor
                     
-                    gatherer = hist4(xo,yo,npx,npy,dpx,dpy,nidx(1),midx(1),px);
+                    
                     
                     
                     %Only gather rays if we've got more than 1 ray. It sounds
@@ -247,7 +282,7 @@ else
                     if nnz(gatherer)>1
                         
                         %make light field index
-                        LF_index = P*Q*N*(mm-1)+P*Q*(nn-1)+Q*(pp-1)+qq;
+                        LF_index = settings.P*settings.Q*settings.N*(mm-1)+settings.P*settings.Q*(nn-1)+settings.Q*(pp-1)+qq;
                         %[A_row_index{LF_index}, A_vals{LF_index}] = find(gatherer(:));
                         %A_sub(:,LF_index) = gatherer(:);
                         %A_sub = build_A_matrix(A_sub,gatherer,LF_index);
@@ -257,20 +292,20 @@ else
                         %v_out = cat(1,v_out,v);
                         [r_outc{LF_index}, c_outc{LF_index}, v_outc{LF_index}] = ...
                             build_A_matrix_sparse(gatherer,LF_index);
-                        if vis_prop %animation to visualize propagation after refraction
-                            for z = 0:zstep:zmax
+                        if settings.vis_prop %animation to visualize propagation after refraction
+                            for z = 0:settings.zstep:settings.zmax
                                 set(0,'CurrentFigure',h3)
                                 yo = uyp*z./uzp+yr;
                                 xo = uxp*z./uzp+xr;
-                                gatherer1 = hist4(xo,yo,npx,npy,dpx,dpy,nidx(1),midx(1),px);
+                                gatherer1 = hist4(xo,yo,settings.npx,settings.npy,dpx,dpy,nidx(1),midx(1),px);
                                 
                                 if nnz(gatherer1)>1
-                                    x_sensor = [0:npx-1]*dpx;
-                                    y_sensor = [0:npy-1]*dpy;
-                                    xmin = xg(1)+nidx(1)*px-tand(th_range)*zmax;
-                                    xmax = xg(end)+nidx(1)*px+tand(th_range)*zmax;
-                                    ymin = yg(1)+midx(1)*px-tand(ph_range)*zmax;
-                                    ymax = yg(end)+midx(1)*px+tand(ph_range)*zmax;
+                                    x_sensor = [0:settings.npx-1]*dpx;
+                                    y_sensor = [0:settings.npy-1]*dpy;
+                                    xmin = xg(1)+nidx(1)*px-tand(settings.th_range)*settings.zmax;
+                                    xmax = xg(end)+nidx(1)*px+tand(settings.th_range)*settings.zmax;
+                                    ymin = yg(1)+midx(1)*px-tand(settings.ph_range)*settings.zmax;
+                                    ymax = yg(end)+midx(1)*px+tand(settings.ph_range)*settings.zmax;
                                     if dy_idx>1 && dx_idx>1
                                         
                                         imagesc(gatherer1,'XData',x_sensor,'YData',y_sensor)
@@ -286,23 +321,23 @@ else
                                         xlim([ymin ymax])
                                         xlabel('\mum')
                                     end
-                                    title(['indensity at z=',num2str(z),' for ',num2str(nrays),...
-                                        ' rays, \theta=',num2str(dth*(-qq+Q/2+.5)),...
-                                        ' \phi=',num2str(dph*(-pp+P/2+.5))])
+                                    title(['indensity at z=',num2str(z),' for ',num2str(settings.nrays),...
+                                        ' rays, \theta=',num2str(dth*(-qq+settings.Q/2+.5)),...
+                                        ' \phi=',num2str(dph*(-pp+settings.P/2+.5))])
                                     hold off
                                     pause(1/100)
                                 end
                             end
                         end  %End propagation visualization
                         
-                        if vis_sensor
+                        if settings.vis_sensor
                             set(0,'CurrentFigure',h4)
-                            x_sensor = [0:npx-1]*dpx;
-                            y_sensor = [0:npy-1]*dpy;
-                            xmin = xg(1)+nidx(1)*px-tand(th_range)*z0;
-                            xmax = xg(end)+nidx(1)*px+tand(th_range)*z0;
-                            ymin = yg(1)+midx(1)*px-tand(ph_range)*z0;
-                            ymax = yg(end)+midx(1)*px+tand(ph_range)*z0;
+                            x_sensor = [0:settings.npx-1]*dpx;
+                            y_sensor = [0:settings.npy-1]*dpy;
+                            xmin = xg(1)+nidx(1)*px-tand(settings.th_range)*settings.z0;
+                            xmax = xg(end)+nidx(1)*px+tand(settings.th_range)*settings.z0;
+                            ymin = yg(1)+midx(1)*px-tand(settings.ph_range)*settings.z0;
+                            ymax = yg(end)+midx(1)*px+tand(settings.ph_range)*settings.z0;
                             if dy_idx>1 && dx_idx>1
                                 imagesc(gatherer,'XData',x_sensor,'YData',y_sensor)
                                 hold on
@@ -319,16 +354,16 @@ else
                                 xlim([ymin ymax])
                                 xlabel('\mum')
                             end
-                            title(['indensity at z=',num2str(z0),' for ',num2str(nrays),...
-                                ' rays, \theta=',num2str(dth*(-qq+Q/2+.5)),...
-                                ' \phi=',num2str(dph*(-pp+P/2+.5))])
+                            title(['indensity at z=',num2str(settings.z0),' for ',num2str(settings.nrays),...
+                                ' rays, \theta=',num2str(dth*(-qq+settings.Q/2+.5)),...
+                                ' \phi=',num2str(dph*(-pp+settings.P/2+.5))])
                             hold off
                             pause(1/24)
                         end
                     end
                     
                     %               %% Visualization
-                    if vis
+                    if settings.vis
                         %Calculate global x and y index locations for rays
                         scl = 1;
                         nnr = xr/px+nidx(1);
@@ -375,11 +410,11 @@ else
             end
         end
         ytend = toc(ytstart);
-        tleft = (M*N*P*Q-LF_index)/(N*P*Q)*ytend;
+        tleft = (settings.M*settings.N*settings.P*settings.Q-LF_index)/(settings.N*settings.P*settings.Q)*ytend;
         tmin = floor(tleft/60);
         tsec = mod(tleft/60,tmin)*60;
-        waitbar(LF_index/M/N/P/Q,h5,...
-            [num2str(100*(LF_index)/(M*N*P*Q)),'% done. ',num2str(M*N*P*Q),...
+        waitbar(LF_index/settings.M/settings.N/settings.P/settings.Q,h5,...
+            [num2str(100*(LF_index)/(settings.M*settings.N*settings.P*settings.Q)),'% done. ',num2str(settings.M*settings.N*settings.P*settings.Q),...
             ' total, ',num2str(ytend),' seconds per pass. ~',...
             num2str(tmin),':',num2str(tsec,'%.0f'),' to go.'])
     end
@@ -388,15 +423,11 @@ end
 r_out = vertcat(r_outc{:});
 c_out = vertcat(c_outc{:});
 v_out = vertcat(v_outc{:});
-A_sub = sparse(r_out,c_out,v_out,npx*npy,N*M*P*Q);
+A_sub = sparse(r_out,c_out,v_out,settings.npx*settings.npy,settings.N*settings.M*settings.P*settings.Q);
 total_runtime = toc(tstart1);
-fprintf([num2str(total_runtime),' seconds for ',num2str(P*Q*N*M*nrays),' rays\n'])
+fprintf([num2str(total_runtime),' seconds for ',num2str(settings.P*settings.Q*settings.N*settings.M*settings.nrays),' rays. ',...
+    num2str(settings.P*settings.Q*settings.N*settings.M*settings.nrays/total_runtime/1e6),' million rays/sec\n'])
 
-profile viewer
-
-
-%fit polynomial locally
-
-%calculate exact refraction angle
-
-%propagate to output plane
+if settings.code_profiler
+    profile viewer
+end

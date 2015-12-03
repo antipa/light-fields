@@ -1,9 +1,9 @@
 ntheta = 5;
 nphi = 5;
-nx = 50;
-ny = 50;
-xstart = 740;
-ystart = 210;
+nx = 512;
+ny = 512;
+xstart = 327;
+ystart = 1;
 cols = xstart:xstart+nx-1;
 rows = ystart:ystart+ny-1;
 clf
@@ -17,11 +17,13 @@ g = a;
 b = a;
 a_test = a;
 
-monochrome = 0;  %1 for red, 2 green 3 blue
+monochrome = 1;  %1 for red, 2 green 3 blue
 h8 = figure(8),clf
-for p = 1:nphi
-    for q = 1:ntheta
+for p = 1:5
+    for q = 1:5
         count = count+1;
+        
+
         if monochrome
         
         %     a = imread(['/Users/nick.antipa/Documents/Light field/Data/dice/dice-',...
@@ -30,6 +32,8 @@ for p = 1:nphi
                 %num2str(n,'%02d'),'.png']);
              %im_in = imread(['/Users/nick.antipa/Documents/Light field/Data/DragonAndBunnies/DragonsAndBunnies_5x5_ap6.6/dragons-',...
                  %num2str(count,'%02d'),'.png']);
+                 im_in = imread(['/Users/nick.antipa/Documents/Light field/Data/DragonAndBunnies/DragonsAndBunnies_5x5_ap6.6/dragons-',...
+                num2str(count,'%02d'),'.png']);
              a(:,:,q,p) = im_in(rows,cols,monochrome);
             %lf(n,:,:) = a(row,cols,:);
             imagesc(a(:,:,q,p))
@@ -41,9 +45,9 @@ for p = 1:nphi
                 num2str(count,'%02d'),'.png']);
             r(:,:,q,p) = im_in(rows,cols,1);
             g(:,:,q,p) = im_in(rows,cols,2);
-            b(:,:,q,p) = im_in(rows,cols,3);                
+            b(:,:,q,p) = im_in(rows,cols,3);            
             imagesc(uint8(cat(3,r(:,:,q,p),g(:,:,q,p),b(:,:,q,p))))
-            pause(1/24)
+            pause(1/10)
         end
     end
 end
@@ -51,7 +55,7 @@ end
 %%
 
 str = input('Output mat file name: ','s')
-filename = ['./Output/',str,'.mat'] 
+filename = ['../Output/',str,'.mat'] 
 if monochrome
     lf = permute(a,[4,3,2,1]);
 else
@@ -106,7 +110,9 @@ set(0,'CurrentFigure',h8)
 for n = 1:nphi
     for m = 1:ntheta
         count = count+1;
-        imagesc(uint8(lf_im(n:5:end,m:5:end,:)))
+        im_int = (lf_im(n:5:end,m:5:end,:));
+        im_n = double(im_int) + 255*.001*randn(size(im_int));
+        imagesc(uint8(im_n))
         
         [imind,cm] = rgb2ind(uint8(lf_im(n:5:end,m:5:end,:)),256);
         if save_gif

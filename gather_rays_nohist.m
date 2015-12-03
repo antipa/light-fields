@@ -3,8 +3,8 @@ function gatherer = gather_rays_nohist(xo,yo,npx,npy,dpx,dpy,offsetx,offsety,px)
 nidx = offsetx;
 midx = offsety;
 
-xo_r_sub = round(xo/dpx) + nidx(1);
-yo_r_sub = round(yo/dpy) + midx(1);
+xo_r_sub = round(xo/dpx+nidx)-1;
+yo_r_sub = round(yo/dpy+midx)-1;
 good = xo_r_sub>0&yo_r_sub>0&xo_r_sub<=npx&yo_r_sub<=npy;               
 xo_r_sub = xo_r_sub(good);
 yo_r_sub = yo_r_sub(good);
