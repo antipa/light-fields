@@ -52,6 +52,7 @@ if pad>1;
     N = 2*max(max(Rp));
     window_2d = a0-a1*cos(2*pi*(Rp-N/2)/(N-1))+...
         a2*cos(4*pi*(Rp-N/2)/(N-1))-a3*cos(6*pi*(Rp-N/2)/(N-1));
+    window_2d = window_2d/max(max(window_2d));
 else
     window_2d = ones(size(Ui));
 end

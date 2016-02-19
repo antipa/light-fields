@@ -5,8 +5,8 @@
 monochrome = 0;   %1 for red, 2 for green, 3 for blue, 0 for color
 
 %A_in = load('../Output/A_sub_100_100_5_5_5e4_CORRECT3.mat');
-A_in = load('../Output/A_under_50x50x5x5_125x125_far_z.mat');
-use_twist = 1;
+%A_in = load('../Output/A_under_50x50x5x5_125x125_far_z.mat');
+solver = 'lsmr';
 Phi_func = @(x)sum(diff(x));
 save_file = 0;
 nsx = A_in.settings.npx;    %Number of sensor pixels in x
@@ -79,17 +79,27 @@ else  %Color case
         
         intens_noisy = sensor_mono + abs(noise*max(sensor_mono)*randn(size(sensor_mono)));   %Add noise
         sensor(:,:,n) = reshape(intens_noisy,[nsx,nsy]);    %Reshape to image
-        if use_twist
-            fprintf('using twist\n')
-            recovered =  TwIST(intens_noisy,A_sub1,5e-2,'Phi',Phi_func,'StopCriterion',1,'ToleranceA',.00001);
+        switch lower(solver)
+            case('twist')
+                fprintf('using twist\n')
+                recovered =  TwIST(intens_noisy,A_sub1,5e-2,'Phi',Phi_func,'StopCriterion',1,'ToleranceA',.00001);
             
-        else
-            AtA = A_sub1'*A_sub1;   %Computer A'A
-            AtA_r = (AtA+lambda*speye(size(AtA)));   %Add regularization
-            recovered = AtA_r\(A_sub1'*(intens_noisy));  %Invert
+            case('back_divide')
+                AtA = A_sub1'*A_sub1;   %Computer A'A
+                AtA_r = (AtA+lambda*speye(size(AtA)));   %Add regularization
+                recovered = AtA_r\(A_sub1'*(intens_noisy));  %Invert
+                rec_structure = 'vector';
+            case('lsmr')
+                recovered = lsmr(A,b,1e-5,[],[],[],[],[],1);
+                rec_structure = 'vector';
         end
-        
-        recovered_reshaped{n} = reshape(recovered,[nphi,ntheta,nx,ny]); %Reshape inversion to light field (4d)
+        switch lower(rec_structure)
+            case('vector')
+                recovered_reshaped{n} = reshape(recovered,[nphi,ntheta,nx,ny]); %Reshape inversion to light field (4d)
+            case('stack')
+                recovered_reshaped{n} = 
+            case('wavelet')
+        end
     end
     toc
     imshow((sensor/prctile(sensor(:),99)));  %Display sensor image

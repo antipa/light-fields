@@ -11,7 +11,6 @@ else
     %You need to load settings externally!
 end
 
-
 %get diffuser surface
 
 %Notes:
@@ -50,10 +49,10 @@ if dy_idx<1
 end
 
 ssize = [max(settings.y_range,1), max(settings.x_range,1)];   %Sensor size in microns
-%dpx = ssize(2)/settings.npx;
-%dpy = ssize(1)/settings.npy;
-dpx = px;
-dpy = px;
+dpx = ssize(2)/settings.npx;
+dpy = ssize(1)/settings.npy;
+%dpx = px;
+%dpy = px;
 xs = min(x):dpx:max(x);
 ys = xs;
 
@@ -73,8 +72,7 @@ if ~settings.useParfor
     A_sub = sparse(settings.npx*settings.npy,settings.N*settings.M*settings.P*settings.Q);
 end
 %preallocate
-A_row_index = cell(settings.M*settings.N*settings.P*settings.Q,1);  %Row index fo
-A_vals = A_row_index;
+A_vals = cell(settings.M*settings.N*settings.P*settings.Q,1);  
 r_outc = cell(settings.M*settings.N*settings.P*settings.Q,1);
 c_outc = cell(settings.M*settings.N*settings.P*settings.Q,1);
 v_outc = cell(settings.M*settings.N*settings.P*settings.Q,1);
@@ -186,9 +184,9 @@ if settings.useParfor
             %                 xo = uxp./uzp*settings.z0+xr;
         elseif settings.paraxial
             %yoxo = [yr,xr]+settings.z0*[settings.dn*Fyr+ph*pi/180*settings.indexDiff,settings.dn*Fxr+th*pi/180*settings.indexDiff];
+            %%%%%%FIX THIS%%%%%%%%%%%%%% to be n/n' theta + (n/n' - 1) Fxr
             xo = xr+settings.z0*(settings.dn*Fxr+th*pi/180*settings.indexDiff);
             yo = yr+settings.z0*(settings.dn*Fyr+ph*pi/180*settings.indexDiff);
-
         end
         
         gatherer = gather_rays_nohist(xo,yo,settings.npx,settings.npy,dpx,dpy,nidx_1,midx_1,px);
