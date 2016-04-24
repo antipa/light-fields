@@ -39,7 +39,7 @@ uy = tand(ph);
 uz = ones(size(ux));
 norms = sqrt(ux.^2+uy.^2+1);
 
-%Normalize (probably not necessary?) to get direction
+%Normalize to get direction
 %cosines
 uxn = ux./norms;
 uyn = uy./norms;

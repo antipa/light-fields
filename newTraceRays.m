@@ -1,3 +1,4 @@
+
 %also added index variable
 %gets data from tracerays_settings.m
 use_defaults = 1
@@ -22,7 +23,8 @@ if ~settings.preload_diff
     %in = load('../Output/diffuser.mat');
     %in = load('../Output/1deg_20151121_diffuser.mat');   %Pretty good ho_tie result. Scaled wrong.
     %in = load('../Output/1deg_diffuser_surface_gptie.mat');
-    in = load('/Users/nick.antipa/Documents/MATLAB/Output/1deg_magnified_gptie_surface.mat');
+    %in = load('/Users/nick.antipa/Documents/MATLAB/Output/1deg_magnified_gptie_surface.mat');
+    in = load('/Users/nick.antipa/Documents/MATLAB/Output/1deg_magnified_gptie_surface_1025.mat');
     diffuser_in = in.filtered * settings.strength;
     x = in.x;
 end
@@ -32,6 +34,8 @@ if settings.diff_upsample
 else
     diffuser = diffuser_in;
 end
+% warning('using sin grating')
+% diffuser = sin(2*pi/500*x)*250;
 y = x;
 px = mean(diff(x)); %diffuser "pixel" size in um/pixel
 clear in
@@ -87,8 +91,8 @@ elseif dx_idx == 0
 else
     [Fx, Fy] = gradient(diffuser);
 end
-Fx = Fx/dpx;
-Fy = Fy/dpy;
+Fx = Fx/px;
+Fy = Fy/px;
 
 %Setup figure windows and handles for visualization
 if settings.vis
@@ -97,17 +101,31 @@ if settings.vis
     h2 = figure(2);
     clf
 end
-if settings.vis_prop
-    h3 = figure(3);
-    clf
-end
+
 if settings.vis_sensor
     h4 = figure(4);
     clf
 end
-if ~settings.useParfor
-    h5 = waitbar(0,'beginning');
+
+if settings.vis_prop
+    h3 = figure(3);
+    clf
+    if settings.vis_hist
+        h6 = figure(6);
+        clf
+    end
+    if settings.vis_xcorr
+        h7 = figure(7);
+        clf
+    end
 end
+
+if ~settings.useParfor
+    if settings.waitbar
+        h5 = waitbar(0,'beginning');
+    end
+end
+
 %Loop over grid positions on surface
 [Xg, Yg] = meshgrid(-dx_idx*px/2:px:dx_idx*px/2,-dx_idx*px/2:px:dx_idx*px/2);
 tstart1 = tic;
@@ -236,7 +254,7 @@ else
                     if dy_idx==0
                         Fxr = interp1(xg,Fx_crop,xr);  %Interpolate x gradient
                         Fyr = zeros(size(Fxr));
-                        %zr = interp1(xg,diff_crop,xr);   %Interpolate surface
+                        zr = interp1(xg,diff_crop,xr);   %Interpolate surface
                     elseif dx_idx==0
                         Fyr = interp1(yg,Fy_crop,yr);  %Interpolate x gradient
                         Fxr = zeros(size(Fyr));
@@ -255,7 +273,9 @@ else
                         %propagate to output plane by a distance z
                         [yo, xo] = propagation(uyp, uzp, settings.z0, yr, uxp, xr);
                         %                 yo = uyp./uzp*settings.z0+yr;
-                        %                 xo = uxp./uzp*settings.z0+xr;
+                        %    
+                        
+                        xo = uxp./uzp*settings.z0+xr;
                     elseif settings.paraxial
                         %yoxo = [yr,xr]+settings.z0*[settings.dn*Fyr+ph*pi/180*settings.indexDiff,settings.dn*Fxr+th*pi/180*settings.indexDiff];
                         xo = xr+settings.z0*(settings.dn*Fxr+th*pi/180*settings.indexDiff);
@@ -270,12 +290,13 @@ else
                     
                     gatherer = gather_rays_nohist(xo,yo,settings.npx,settings.npy,dpx,dpy,nidx(1),midx(1),px);
                     %Gather rays on sensor
-                    
-                    
+                    if settings.npy == 1
+                        gatherer = gather_rays(xo,yo,settings.npx,settings.npy,dpx,dpy,nidx(1),midx(1),px);
+                    end
                     
                     
                     %Only gather rays if we've got more than 1 ray. It sounds
-                    %dumb, but the hist code doesn't work when there's 1 ray,
+                    %dumb, but the hist code doesn't work when there's 1  ray,
                     %and I don't care about a single ray anyway.
                     if nnz(gatherer)>1
                         
@@ -290,39 +311,87 @@ else
                         %v_out = cat(1,v_out,v);
                         [r_outc{LF_index}, c_outc{LF_index}, v_outc{LF_index}] = ...
                             build_A_matrix_sparse(gatherer,LF_index);
+                        
+
                         if settings.vis_prop %animation to visualize propagation after refraction
-                            for z = 0:settings.zstep:settings.zmax
+                        	
+                            zvec = 0:settings.zstep:settings.zmax;
+                            v_mat = zeros(length(zvec),settings.npx);
+                            for z = zvec;
                                 set(0,'CurrentFigure',h3)
                                 yo = uyp*z./uzp+yr;
                                 xo = uxp*z./uzp+xr;
-                                gatherer1 = hist4(xo,yo,settings.npx,settings.npy,dpx,dpy,nidx(1),midx(1),px);
-                                
+                                if settings.npy~=1
+                                    gatherer1 = hist4(xo,yo,settings.npx,settings.npy,dpx,dpy,nidx(1),midx(1),px);
+                                elseif settings.npy == 1
+                                    gatherer1 = gather_rays(xo,yo,settings.npx,settings.npy,dpx,dpy,nidx(1),midx(1),px);
+                                end
                                 if nnz(gatherer1)>1
                                     x_sensor = [0:settings.npx-1]*dpx;
                                     y_sensor = [0:settings.npy-1]*dpy;
-                                    xmin = xg(1)+nidx(1)*px-tand(settings.th_range)*settings.zmax;
-                                    xmax = xg(end)+nidx(1)*px+tand(settings.th_range)*settings.zmax;
-                                    ymin = yg(1)+midx(1)*px-tand(settings.ph_range)*settings.zmax;
-                                    ymax = yg(end)+midx(1)*px+tand(settings.ph_range)*settings.zmax;
+                                    thcorr = tand(settings.th_range)*settings.zmax;
+                                    apcorrx = max(max(abs(Fx_crop)))*settings.zmax;
+                                    phcorr = tand(settings.ph_range)*settings.zmax;
+                                    apcorry = max(max(abs(Fy_crop)))*settings.zmax;
+                                    xmin = max(0,xg(1)+nidx(1)*px-thcorr-apcorrx);
+                                    xmax = min(x_sensor(end),xg(end)+nidx(1)*px+thcorr+apcorrx);
+                                    ymin = max(0,yg(1)+midx(1)*px-phcorr-apcorry);
+                                    ymax = min(y_sensor(end),yg(end)+midx(1)*px+phcorr+apcorry);
+                                    
                                     if dy_idx>1 && dx_idx>1
                                         
                                         imagesc(gatherer1,'XData',x_sensor,'YData',y_sensor)
                                         hold on
                                         axis image
                                         axis([xmin xmax ymin ymax])
+                                        if settings.vis_hist
+                                            set(0,'CurrentFigure',h6)
+                                            clf
+                                            hist(full(gatherer(gatherer1>0)))
+                                            title(['histogram of intensity z=',num2str(z)])
+                                            drawnow
+                                        end
                                     elseif dy_idx==0
                                         stairs(x_sensor,gatherer1)
                                         xlim([xmin xmax])
                                         xlabel('\mum')
+                                        v_mat(zvec==z,:) = gatherer1;
                                     elseif dx_idx==0
                                         stairs(y_sensor,gatherer1)
                                         xlim([ymin ymax])
                                         xlabel('\mum')
                                     end
-                                    title(['indensity at z=',num2str(z),' for ',num2str(settings.nrays),...
+                                    set(0,'CurrentFigure',h3)
+                                    title(['intensity at z=',num2str(z),' for ',num2str(settings.nrays),...
                                         ' rays, \theta=',num2str(dth*(-qq+settings.Q/2+.5)),...
                                         ' \phi=',num2str(dph*(-pp+settings.P/2+.5))])
                                     hold off
+                                    
+                                    if settings.vis_xcorr
+                                        [rxcorr,cxcorr] = find(gatherer1);
+                                        rv = min(rxcorr):max(rxcorr);
+                                        cv = min(cxcorr):max(cxcorr);
+                                        %xcorred = xcorr2(full(gatherer1(rv,cv)));
+                                        xcorred = (ifftshift(ifft2(abs(fft2(full(gatherer1)-mean2(gatherer1))).^2)));
+                                        set(0,'CurrentFigure',h7)
+                                        if find(z==zvec(1))
+                                            zleg = {num2str(z)};
+                                            clf
+                                        else
+                                            zleg{end+1} = num2str(z);
+                                        end
+                                        subplot(2,1,1)
+                                        imagesc(xcorred)
+                                        title(['autocorrelation at z=',num2str(z)])
+                                        subplot(2,1,2)
+                                        %hold on
+                                        lout = xcorred(middle(xcorred),:);
+                                        plot(lout(middle(lout):middle(lout)+round(dx_idx)))
+                                        title('Lineout')
+                                        %legend(zleg);
+                                        drawnow
+                                    end
+                                    
                                     pause(1/100)
                                 end
                             end
@@ -332,10 +401,14 @@ else
                             set(0,'CurrentFigure',h4)
                             x_sensor = [0:settings.npx-1]*dpx;
                             y_sensor = [0:settings.npy-1]*dpy;
-                            xmin = xg(1)+nidx(1)*px-tand(settings.th_range)*settings.z0;
-                            xmax = xg(end)+nidx(1)*px+tand(settings.th_range)*settings.z0;
-                            ymin = yg(1)+midx(1)*px-tand(settings.ph_range)*settings.z0;
-                            ymax = yg(end)+midx(1)*px+tand(settings.ph_range)*settings.z0;
+                            thcorr = tand(settings.th_range)*settings.z0;
+                            apcorrx = max(max(abs(Fx_crop)))*settings.z0;
+                            phcorr = tand(settings.ph_range)*settings.z0;
+                            apcorry = max(max(abs(Fy_crop)))*settings.z0;
+                            xmin = max(0,xg(1)+nidx(1)*px-thcorr-apcorrx);
+                            xmax = min(x_sensor(end),xg(end)+nidx(1)*px+thcorr+apcorrx);
+                            ymin = max(0,yg(1)+midx(1)*px-phcorr-apcorry);
+                            ymax = min(y_sensor(end),yg(end)+midx(1)*px+phcorr+apcorry);
                             if dy_idx>1 && dx_idx>1
                                 imagesc(gatherer,'XData',x_sensor,'YData',y_sensor)
                                 hold on
@@ -352,7 +425,7 @@ else
                                 xlim([ymin ymax])
                                 xlabel('\mum')
                             end
-                            title(['indensity at z=',num2str(settings.z0),' for ',num2str(settings.nrays),...
+                            title(['intensity at z=',num2str(settings.z0),' for ',num2str(settings.nrays),...
                                 ' rays, \theta=',num2str(dth*(-qq+settings.Q/2+.5)),...
                                 ' \phi=',num2str(dph*(-pp+settings.P/2+.5))])
                             hold off
@@ -368,7 +441,7 @@ else
                         mmr = yr/px+midx(1);
                         set(0,'CurrentFigure',h1)
                         if dy_idx == 0
-                            %%
+                            
                             clf
                             plot(xg+px*nidx(1),diff_crop)
                             hold on
@@ -402,7 +475,6 @@ else
                             grid on
                             view([11,58])
                         end
-                        pause(1/24)
                     end
                 end
             end
@@ -411,10 +483,12 @@ else
         tleft = (settings.M*settings.N*settings.P*settings.Q-LF_index)/(settings.N*settings.P*settings.Q)*ytend;
         tmin = floor(tleft/60);
         tsec = mod(tleft/60,tmin)*60;
-        waitbar(LF_index/settings.M/settings.N/settings.P/settings.Q,h5,...
-            [num2str(100*(LF_index)/(settings.M*settings.N*settings.P*settings.Q)),'% done. ',num2str(settings.M*settings.N*settings.P*settings.Q),...
-            ' total, ',num2str(ytend),' seconds per pass. ~',...
-            num2str(tmin),':',num2str(tsec,'%.0f'),' to go.'])
+        if settings.waitbar
+            waitbar(LF_index/settings.M/settings.N/settings.P/settings.Q,h5,...
+                [num2str(100*(LF_index)/(settings.M*settings.N*settings.P*settings.Q)),'% done. ',num2str(settings.M*settings.N*settings.P*settings.Q),...
+                ' total, ',num2str(ytend),' seconds per pass. ~',...
+                num2str(tmin),':',num2str(tsec,'%.0f'),' to go.'])
+        end
     end
 end
 

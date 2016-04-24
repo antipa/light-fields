@@ -1,20 +1,23 @@
-ntheta = 5;
-nphi = 5;
+ntheta = 15;
+nphi = 15;
 ims_per_theta = 3;
 ims_per_phi = 3;
 ntheta_tot = ims_per_theta*ntheta;
 nphi_tot = ims_per_phi*nphi;
-nx = 512;
-ny = 512;
-xstart = 600*upsamp-512;
-ystart = 200;
-cols = xstart:xstart+nx-1;
-rows = ystart:ystart+ny-1;
+nx = 128;
+ny = 128;
+upsamp = .5;
+% n_y = 380;
+% n_x = 380;
+xstart = 340;
+ystart = 130;
+cols = floor(xstart*upsamp)+1:floor(xstart*upsamp)+nx;
+rows = floor(ystart*upsamp)+1:floor(ystart*upsamp)+ny;
 clf
 save_gif=0;
-upsamp = 1.7;
+
 figure(5),clf
-count = 0;
+count = 1;
 a = zeros(nx,ny,nphi,ntheta);
 r = a;
 g = a;
@@ -23,78 +26,86 @@ a_test = a;
 subim_type = 'add';
 monochrome = 0;  %1 for red, 2 green 3 blue
 h8 = figure(8),clf
-% for q = 1:nphi
-%     for p = 1:ntheta
+fprintf('blah')
+for q = 1:nphi
+    for p = 1:ntheta
+        count = count+1;
+        
+        
+        if monochrome
+            im_in = imread(['/Users/nick.antipa/Documents/Light_field_data/Dragons/dragons-',...
+                num2str(count,'%03d'),'.png']);
+            a(:,:,q,p) = im_in(rows,cols,monochrome);
+            imagesc(a(:,:,q,p))
+            pause(1/24)
+            %a_test(:,:,q,p) = reshape(count*nx*ny:count*nx*ny+nx*ny-1,[ny,nx]);
+        else
+            cint = mod(q-1,nphi)*ntheta+p;
+            im_in = imread(['/Users/nick.antipa/Documents/Light_field_data/Dragons/dragons-',...
+                num2str(cint,'%03d'),'.png']);
+            %im_in = imread(['/Users/nick.antipa/Documents/Light_field_data/DragonBunnyFlatcam/dragons-flatcam-',...
+                    %num2str(cint,'%03d'),'.png']);
+            im_in = imresize(im_in,upsamp);
+            r(:,:,q,p) = im_in(rows,cols,1);
+            g(:,:,q,p) = im_in(rows,cols,2);
+            b(:,:,q,p) = im_in(rows,cols,3);
+            set(0,'CurrentFigure',h8)
+            clf
+            imagesc(uint8(cat(3,r(:,:,q,p),g(:,:,q,p),b(:,:,q,p))))
+            axis image
+            drawnow
+            
+            cint
+        end
+    end
+end
+
+% for p = 1:ntheta
+%     for q = 1:nphi
 %         %count = count+1;
 %         
 %         
-%         if monochrome
-%             im_in = imread(['/Users/nick.antipa/Documents/Light field/Data/DragonAndBunnies/DragonsAndBunnies_5x5_ap6.6/dragons-',...
-%                 num2str(count,'%02d'),'.png']);
-%             a(:,:,q,p) = im_in(rows,cols,monochrome);
-%             imagesc(a(:,:,q,p))
-%             pause(1/24)
-%             %a_test(:,:,q,p) = reshape(count*nx*ny:count*nx*ny+nx*ny-1,[ny,nx]);
-%         else
+%         ulc = (q-1)*ims_per_phi;
+%         ulr = (p-1)*ims_per_theta;
+%         %scatter(-ulc,ulr)
+%         
+%         im_in = zeros(round(n_y*upsamp),round(n_x*upsamp),3);
+%         for nn = 1:ims_per_theta
 %             for mm = 1:ims_per_phi
-%                 for nn = 1:ims_per_theta
-%                     count = (q-1)*ims_per_phi+1+mm+ims_per_theta*
-%             im_in = imread(['/Users/nick.antipa/Documents/Light field/Data/DragonAndBunnies/DragonsAndBunnies_5x5_ap6.6/dragons-',...
-%                 num2str(count,'%02d'),'.png']);
-%             r(:,:,q,p) = im_in(rows,cols,1);
-%             g(:,:,q,p) = im_in(rows,cols,2);
-%             b(:,:,q,p) = im_in(rows,cols,3);
-%             imagesc(uint8(cat(3,r(:,:,q,p),g(:,:,q,p),b(:,:,q,p))))
-%             pause(1/10)
+%                 col_id = ulc+mm;
+%                 row_id = ulr+nn;
+%                 %scatter(c,-r)
+%                 count = sub2ind([nphi_tot,ntheta_tot],col_id,row_id);
+%                 
+%                 %count = +1+mm+ims_per_theta*
+%                 %im_in = imread(['/Users/nick.antipa/Documents/Light field/Data/DragonAndBunnies/DragonsAndBunnies_5x5_ap6.6/dragons-',...
+%                 %num2str(count,'%02d'),'.png']);
+%                 im_read = imread(['/Users/nick.antipa/Documents/Light_field_data/Dragons/dragons-',...
+%                     num2str(count,'%03d'),'.png']);
+%                 im_read = imresize(im_read,upsamp,'lanczos3');
+%                 im_read = im_read(
+%                 %imagesc(im_read)
+%                 switch lower(subim_type)
+%                     case('pinhole')
+%                         im_in=im_read;
+%                     case('add')
+%                         for colors = 1:3
+%                             im_in(:,:,colors)=im_in(:,:,colors)+double(im_read(:,:,colors))/ims_per_phi/ims_per_theta;
+%                         end
+%                 end
+%                 
+%             end
+%             
 %         end
+%         %imagesc(uint8(im_in))
+%         r(:,:,q,p) = im_in(rows,cols,1);
+%         g(:,:,q,p) = im_in(rows,cols,2);
+%         b(:,:,q,p) = im_in(rows,cols,3);
+%         imagesc(uint8(cat(3,r(:,:,q,p),g(:,:,q,p),b(:,:,q,p))))
+%         drawnow
+%         
 %     end
 % end
-
-for p = 1:ntheta
-    for q = 1:nphi
-        %count = count+1;
-        
-        
-        ulc = (q-1)*ims_per_phi;
-        ulr = (p-1)*ims_per_theta;
-        %scatter(-ulc,ulr)
-        
-        im_in = zeros(n_y*upsamp,n_x*upsamp,3);
-        for nn = 1:ims_per_theta
-            for mm = 1:ims_per_phi
-                col_id = ulc+mm;
-                row_id = ulr+nn;
-                %scatter(c,-r)
-                count = sub2ind([nphi_tot,ntheta_tot],col_id,row_id);
-                
-                %count = +1+mm+ims_per_theta*
-                %im_in = imread(['/Users/nick.antipa/Documents/Light field/Data/DragonAndBunnies/DragonsAndBunnies_5x5_ap6.6/dragons-',...
-                %num2str(count,'%02d'),'.png']);
-                im_read = imread(['/Users/nick.antipa/Documents/Light_field_data/Dragons/dragons-',...
-                    num2str(count,'%03d'),'.png']);
-                im_read = imresize(im_read,upsamp,'lanczos3');
-                %imagesc(im_read)
-                switch lower(subim_type)
-                    case('pinhole')
-                        im_in=im_read;
-                    case('add')
-                        for colors = 1:3
-                            im_in(:,:,colors)=im_in(:,:,colors)+double(im_read(:,:,colors))/ims_per_phi/ims_per_theta;
-                        end
-                end
-                
-            end
-            
-        end
-        %imagesc(uint8(im_in))
-        r(:,:,q,p) = im_in(rows,cols,1);
-        g(:,:,q,p) = im_in(rows,cols,2);
-        b(:,:,q,p) = im_in(rows,cols,3);
-        imagesc(uint8(cat(3,r(:,:,q,p),g(:,:,q,p),b(:,:,q,p))))
-        drawnow
-        
-    end
-end
 
 %%
 
@@ -103,9 +114,9 @@ filename = ['../Output/',str,'.mat']
 if monochrome
     lf = permute(a,[4,3,2,1]);
 else
-    lfr = permute(r,[3,4,2,1]);
-    lfg = permute(g,[3,4,2,1]);
-    lfb = permute(b,[3,4,2,1]);
+    lfr = permute(r,[4,3,2,1]);
+    lfg = permute(g,[4,3,2,1]);
+    lfb = permute(b,[4,3,2,1]);
     save(filename,'lfr','lfg','lfb');
 end
 
