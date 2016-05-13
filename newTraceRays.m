@@ -1,4 +1,3 @@
-
 %also added index variable
 %gets data from tracerays_settings.m
 use_defaults = 1
@@ -24,7 +23,8 @@ if ~settings.preload_diff
     %in = load('../Output/1deg_20151121_diffuser.mat');   %Pretty good ho_tie result. Scaled wrong.
     %in = load('../Output/1deg_diffuser_surface_gptie.mat');
     %in = load('/Users/nick.antipa/Documents/MATLAB/Output/1deg_magnified_gptie_surface.mat');
-    in = load('/Users/nick.antipa/Documents/MATLAB/Output/1deg_magnified_gptie_surface_1025.mat');
+    %in = load('/Users/nick.antipa/Documents/MATLAB/Output/1deg_magnified_gptie_surface_1025.mat');
+    in = load('/Users/nick.antipa/Documents/MATLAB/Output/1deg_flea_4f_gptie_dz381um_surface_1552.mat');
     diffuser_in = in.filtered * settings.strength;
     x = in.x;
 end
@@ -390,6 +390,18 @@ else
                                         title('Lineout')
                                         %legend(zleg);
                                         drawnow
+                                    end
+                                    
+                                    if ~isempty(settings.save_prop)
+                                        filename = settings.save_prop;
+                                        frame = getframe(h3);
+                                        im = frame2im(frame);
+                                        [imind,cm] = rgb2ind(im,256);
+                                        if z==zvec(1);
+                                            imwrite(imind,cm,filename,'gif', 'Loopcount',inf);
+                                        else
+                                            imwrite(imind,cm,filename,'gif','WriteMode','append');
+                                        end
                                     end
                                     
                                     pause(1/100)

@@ -3,8 +3,8 @@
 %im_crop(s_resh==0)=0;
 %linkaxes([a1,a9],'xy')
 
-c = sqrt(9e8);
-A = A_sub/c;
+%c = mean(sum(A_sub.^2,1))
+A = A_sub/(1.5e5);
 clear A_sub;
 At = A';
 % corred = corr2_fft(im_crop,s_resh);
@@ -15,8 +15,8 @@ At = A';
 % grid on
 
 %%
-input_data = 'simulation'
-downsamp = 2; % Binning integer. 2 uses every other, 3 uses every third etc.
+input_data = 'real'
+downsamp = 1; % Binning integer. 2 uses every other, 3 uses every third etc.
 monochrome = 1;
 preload_matrices = 1;
 save_file= 0;
@@ -31,24 +31,30 @@ switch lower(input_data)
     case('real')
         figure(1)
         a1 = gca;
-        crop = 1;
-        dist = 1;
+        crop = 0;
+        dist = 0;
         circ_aper = 0;
+        shift = [0,1];
         if crop
-            crop_c = 1280;
-            crop_r = 1080;
-            crop_half_size = 2^10;
+            %crop_c = 1280;
+            %crop_r = 1080;
+            %crop_half_size = 2^10;
+            crop_c = 1030;
+            crop_r = 761;
+            crop_half_size = 501;
+            odd_size = 1;
         end
-
-
-        im_in = imread('/Users/nick.antipa/Documents/Diffusers/Flowers_20151222/pieces_1.tif');
-
+        
+        
+        im_in = imread('/Users/nick.antipa/Documents/Diffusers/1deg_yes4f_flea3_20160510/pics/4p5mmAper_z654/king_leaf1.tif');
+        
+        
         %in = load('../Output/1deg_20151129_A_sub_128_5_z260_gptiesensor_sim.mat');
         %im_in = in.s_resh;
-
-
+        
+        
         figure(9)
-
+        
         if dist
             OA_c = crop_c-512+1;
             OA_r = crop_r-512+1;
@@ -71,15 +77,22 @@ switch lower(input_data)
         else
             im_dist = double(im_in);
         end
-
+        
         if crop
-            im_crop = double(im_dist(crop_r-crop_half_size+1:crop_r+crop_half_size,crop_c-crop_half_size+1:crop_c+crop_half_size));
+            if odd_size ~=1 
+                im_crop = double(im_dist(crop_r-crop_half_size:crop_r+crop_half_size-1,crop_c-crop_half_size:crop_c+crop_half_size-1));
+            else
+                im_crop = double(im_dist(crop_r-crop_half_size+1:crop_r+crop_half_size-1,crop_c-crop_half_size+1:crop_c+crop_half_size-1));
+            end
         else
             im_crop = im_dist;
         end
-        im_crop = im_crop-min(im_crop(:));
+ 
+        im_crop = circshift(im_crop,shift);
+
+        %im_crop = im_crop-min(im_crop(:));
         %im_crop = im_crop-min(min(im_crop));
-   
+        
         if downsamp ~= 1
             if (downsamp-floor(downsamp))~=0
                 error('You need to use an integer for downsampling')
@@ -88,33 +101,33 @@ switch lower(input_data)
             im_crop = im_conv(1:downsamp:end,1:downsamp:end);
             
         end
-             colormap default
+        colormap default
         imagesc_pctl(im_crop,5,99.9);
         axis image
         a9 = gca
         b = double(im_crop(:));
     case('simulation')
         if ~preload_matrices
-             %in_inv = load('/Users/nick.antipa/Documents/MATLAB/Output/1deg_20151129_A_sub_128_5_z260_gptie.mat');
-             in_inv = load('/Users/nick.antipa/Documents/MATLAB/Output/1deg_20151129_A_sub_512_5_z260_gptie.mat');
-             %inv_str = '../Output/A_sub_38_15_600_for_square.mat';
-             %inv_str = '../Output/A_sub_38_15_425_forCS_smallang.mat';
-             in_inv = load(inv_str);
-             A_sub = in_inv.A_sub;
-             settings = in_inv.settings;
-             clear in_inv
-             in_for = load(inv_str);
-             A_for = in_for.A_sub;
-             clear in_for
-
-             if size(A_for,1)~=size(A_sub,1)
-                 error('matrix sensor sizes do not match')
-             end
-             
-             A = A_sub/settings.nrays;
-             At = A';
-             %clear A_for
-             %clear A_sub;
+            %in_inv = load('/Users/nick.antipa/Documents/MATLAB/Output/1deg_20151129_A_sub_128_5_z260_gptie.mat');
+            in_inv = load('/Users/nick.antipa/Documents/MATLAB/Output/1deg_20151129_A_sub_512_5_z260_gptie.mat');
+            %inv_str = '../Output/A_sub_38_15_600_for_square.mat';
+            %inv_str = '../Output/A_sub_38_15_425_forCS_smallang.mat';
+            in_inv = load(inv_str);
+            A_sub = in_inv.A_sub;
+            settings = in_inv.settings;
+            clear in_inv
+            in_for = load(inv_str);
+            A_for = in_for.A_sub;
+            clear in_for
+            
+            if size(A_for,1)~=size(A_sub,1)
+                error('matrix sensor sizes do not match')
+            end
+            
+            A = A_sub/settings.nrays;
+            At = A';
+            %clear A_for
+            %clear A_sub;
         end
         lf_str = '../Output/38_15_4d_lf.mat';
         lf_in = load(lf_str);
@@ -123,15 +136,21 @@ switch lower(input_data)
         end
         b = b_raw+randn(size(b_raw))*.01*prctile(b_raw,99);
         b(b<0) = 0;
-        nsx = settings.npx;    %Number of sensor pixels in x
-        nsy = settings.npy;  %Number of sensor pixels in y
-        nx = settings.N;   %Number of light field x bins
-        ny = settings.M;   %Number of light field y bins
-        ntheta = settings.P; %Number of theta bins
+        b = b*1e-9;
+%         nsx = settings.npx;    %Number of sensor pixels in x
+%         nsy = settings.npy;  %Number of sensor pixels in y
+%         nx = settings.N;   %Number of light field x bins
+%         ny = settings.M;   %Number of light field y bins
+%         ntheta = settings.P; %Number of theta bins
+%         
+%         nphi = settings.Q; %Number of phi bins
         
-        nphi = settings.Q; %Number of phi bins
-
 end
+
+
+b = b-min(b);
+b(b<0)=0;
+nphi = settings.Q; %Number of phi bins
 clear im_dist;
 clear im_in_dist;
 clear im_rho;
@@ -140,6 +159,12 @@ clear im_th;
 clear im_X;
 clear im_Y;
 %%
+
+nsx = settings.npx;    %Number of sensor pixels in x
+nsy = settings.npy;  %Number of sensor pixels in y
+nx = settings.N;   %Number of light field x bins
+ny = settings.M;   %Number of light field y bins
+ntheta = settings.P; %Number of theta bins
 count= 0;
 order_vec = [];
 %prepares vector for reshaping into stack
@@ -165,18 +190,18 @@ angle_index_vec = (1:nx*ny*ntheta*nphi)';  %vector to stack, switch nx,ntheta an
 % Make indexing to go from angle stack to vector (for input to A)
 %x0 = A_adj_tv(b,At,order_vec,nx,ny,ntheta,nphi);
 %bp = A_tv(x0,A,deindex_vec);
-%%
+
 
 
 lamb = 0;
 write_gif = 0;
 use_twist = 1;
 if ~use_twist
-    recovered = (AtA+lamb*speye(size(AtA)))\(A_sub'*double(im_crop(:)));
+    recovered = (AtA+lamb*speye (size(AtA)))\(A_sub'*double(im_crop(:)));
 elseif use_twist
     %Phi_func = @(x)(1e8*x'*-(x<0));
     %A_func = @(x) A_tv(x,A,angle_deindex_vec);
-    model_type = 'wavelet';
+    model_type = '3dtv';
     solver_type = 'TwIST';
     switch lower(model_type)
         case 'angle_tv'
@@ -186,19 +211,19 @@ elseif use_twist
             Psi_func = @(x,th)  tvdenoise_lf(x,2/th,tv_iters);
             debias = 0;
         case '3dtv'
-            tv_iters = 2;
+            tv_iters = 3;
             A_func = @(x) A_tv(x,A,deindex_vec);
             A_adj_func = @(x) A_adj_tv(x,At,order_vec,nx,ny,ntheta,nphi);
             Phi_func = @(x) TVnorm3d(x);
-            Psi_func = @(x,th) tvdenoise3d(x,2/th,tv_iters,0);
+            Psi_func = @(x,th) tvdenoise3d(x,2/th,tv_iters,1);
             debias = 0;
-            tau = 20000;
+            tau = 10;
         case 'wavelet'
             dwtmode('per');
-            %wvlt = 'db9';
-            %dwvlt = 'db9';
-            wvlt = 'bior6.8';
-            dwvlt = 'rbio6.8';
+            wvlt = 'db9';
+            dwvlt = 'db9';
+            %wvlt = 'bior6.8';
+            %dwvlt = 'rbio6.8';
             N = 4;
             [C,L] = wavedec2(rand(nx,ny),N,wvlt);
             wvltsize = length(C);
@@ -210,8 +235,8 @@ elseif use_twist
             Phi_func = @(x) norm(x,1);
             Psi_func = @(x,tau) soft(x,tau);
             debias = 0;
-            tau = 30000;
-         case 'hard_wavelet'
+            tau = 5;
+        case 'hard_wavelet'
             dwtmode('per');
             %wvlt = 'db9';
             %dwvlt = 'db9';
@@ -242,7 +267,7 @@ elseif use_twist
             debais = 0;
             tau = 30000;
         case 'lsmr'
-            lam = 1e-1;
+            lam = 1e-10;
             
     end
 end
@@ -270,11 +295,11 @@ switch lower(solver_type)
             'Phi',Phi_func,...
             'Initialization',2,...
             'Debias',debias,...
-            'MaxiterA',200,...
+            'MaxiterA',300,...
             'Monotone',1,...
-            'ToleranceA',.00001);
+            'ToleranceA',.0001);
     case('lsmr')
-        recovered = lsmr(A,b,lam,[],[],[],[],[],1);
+        recovered = lsmr(A,b,lam,[],[],[],[],[],1e6);
 end
 %20151205 These work really well with the 180x180x7x7x2048 4 degree
 %matrix along with TVnorm3d and tvdenoise3d, tviters 5, A_tv and
@@ -292,7 +317,7 @@ end
 rec_backup = recovered;
 %%
 recovered = rec_backup;
-switch lower(model_type) 
+switch lower(model_type)
     case 'angle_tv'
         recovered_ang = recovered;
         recovered_vec = recovered_ang(:);
@@ -330,16 +355,16 @@ if save_subap
     
 end
 for n =1:ntheta*nphi
-%     if ~ismember(n,good_idx)
-%         recovered(:,:,n)=0;
-%     end
+    %     if ~ismember(n,good_idx)
+    %         recovered(:,:,n)=0;
+    %     end
     pct = prctile(recovered(:),99);
     subap_scl = recovered(:,:,n)'/pct*255;
     imagesc(subap_scl);
     colormap gray
     axis image
     caxis([prctile(subap_scl(:),1) 255])
-    pause(1/24)
+    pause(1/10)
     drawnow
     if save_subap
         
@@ -402,10 +427,10 @@ end
 xtheta = zeros(ntheta,nx);
 m = 6
 %if m == ceil(nphi/2)  %Make x theta slice
-    for nn = 1:ntheta
-        ii = sub2ind([nphi,ntheta],nn,m)
-        xtheta(nn,:) = wvlt_recovered.recovered(:,60,ii);
-    end
+for nn = 1:ntheta
+    ii = sub2ind([nphi,ntheta],nn,m)
+    xtheta(nn,:) = wvlt_recovered.recovered(:,60,ii);
+end
 %end
 
 imagesc(xtheta)
@@ -433,8 +458,8 @@ if save_gif
 end
 fcount = 0;
 xtheta = zeros(ntheta,nx);
-scale_vec = -3:.1:2
-refocused_stack = zeros(settings.M,settings.N,length(scale_vec));
+scale_vec = -1
+refocused_stack= zeros(settings.M,settings.N,length(scale_vec));
 for s = scale_vec
     fcount = fcount+1;
     %s =
@@ -475,22 +500,22 @@ for s = scale_vec
             %round(s*(n-ntheta/2-1/2));
             refocused = im_shifted+refocused;
             refocused(refocused<0) = 0;
-%             if m == ceil(nphi/2)  %Make x theta slice
-%                     ii = sub2ind([nphi,ntheta],nn,m);
-%                     xtheta(n,:) = mean(im_shifted(80,:),1);
-%                     xtheta(n,:) = xtheta(n,:)/2+circshift(xtheta(n,:),[0,1])/2;
-%             end
-%             %             %set(0,'CurrentFigure',h8)
-%                         imagesc(im_shifted)
-%                         colormap gray
-%                         caxis([0 1e8])
-%                         drawnow
-%             pause(1/5)
+            %             if m == ceil(nphi/2)  %Make x theta slice
+            %                     ii = sub2ind([nphi,ntheta],nn,m);
+            %                     xtheta(n,:) = mean(im_shifted(80,:),1);
+            %                     xtheta(n,:) = xtheta(n,:)/2+circshift(xtheta(n,:),[0,1])/2;
+            %             end
+            %             %             %set(0,'CurrentFigure',h8)
+            %                         imagesc(im_shifted)
+            %                         colormap gray
+            %                         caxis([0 1e8])
+            %                         drawnow
+            %             pause(1/5)
         end
         
     end
     
-    refocused_scl = real((refocused/prctile(refocused(:),99)).^(1))*255;
+    refocused_scl = real((refocused/prctile(refocused(:),99.8)).^(1))*255;
     refocused_stack(:,:,fcount) = refocused_scl;
     imagesc(refocused_scl);
     colormap gray
