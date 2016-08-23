@@ -1,6 +1,6 @@
 %also added index variable
 %gets data from tracerays_settings.m
-use_defaults = 1
+use_defaults = 1;
 if use_defaults
     try
         tracerays_settings;
@@ -319,7 +319,7 @@ else
                             v_mat = zeros(length(zvec),settings.npx);
                             for z = zvec;
                                 set(0,'CurrentFigure',h3)
-                                yo = uyp*z./uzp+yr;
+                                 yo = uyp*z./uzp+yr;
                                 xo = uxp*z./uzp+xr;
                                 if settings.npy~=1
                                     gatherer1 = hist4(xo,yo,settings.npx,settings.npy,dpx,dpy,nidx(1),midx(1),px);
