@@ -13,84 +13,96 @@ end
 
 %get diffuser surface
 
-%Notes:
-%Make sensor size dynamic
+%Enable code profiler for timing etc. Doesn't work with parfor
 if settings.code_profiler
     profile on
 end
+
+%If diffuser has not been loaded externally, load this file
 if ~settings.preload_diff
-    %in = load('../Output/diffuser.mat');
-    %in = load('../Output/1deg_20151121_diffuser.mat');   %Pretty good ho_tie result. Scaled wrong.
-    %in = load('../Output/1deg_diffuser_surface_gptie.mat');
-    %in = load('/Users/nick.antipa/Documents/MATLAB/Output/1deg_magnified_gptie_surface.mat');
-    %in = load('/Users/nick.antipa/Documents/MATLAB/Output/1deg_magnified_gptie_surface_1025.mat');
     in = load('/Users/nick.antipa/Documents/MATLAB/Output/1deg_flea_4f_gptie_dz381um_surface_1552.mat');
-    diffuser_in = in.filtered * settings.strength;
-    x = in.x;
+    diffuser_in = in.filtered * settings.strength;   %Scale height
+    x = in.x;   %get physical units grid from file
 end
+
+%Upsample diffuser if needed
 if settings.diff_upsample
     diffuser = imresize(diffuser_in,settings.diff_upsample,'bicubic');
     x = linspace(min(x),max(x),numel(x)*settings.diff_upsample);
 else
     diffuser = diffuser_in;
 end
-% warning('using sin grating')
-% diffuser = sin(2*pi/500*x)*250;
+
+
 y = x;
 px = mean(diff(x)); %diffuser "pixel" size in um/pixel
 clear in
-range_idx = floor(settings.x_range/px);
-dx_idx = floor(settings.x_range/settings.N/px);
+range_idx = floor(settings.x_range/px);     %Compute the range over which the light field illuminates the diffuser, in index units
+dx_idx = floor(settings.x_range/settings.N/px);    %Lateral extent of each bundle in index units
+
+%Don't allow index less than 1
 if dx_idx<1
     dx_idx = 1;
 end
 
+%Repeat same calculations for y direction
 y_idx = (y-min(y))/px;   %x vector as index
 range_idy = floor(settings.y_range/px);
 dy_idx = floor(settings.y_range/settings.M/px);
+
+%If y window size is less than 1, assume we are doing a 1d problem
 if dy_idx<1
     dy_idx = 0;
 end
 
+% Calculate the sensor size in physical units
 ssize = [max(settings.y_range,1), max(settings.x_range,1)];   %Sensor size in microns
-dpx = ssize(2)/settings.npx;
+dpx = ssize(2)/settings.npx;    %pixel size on sensor in micron/pixel
 dpy = ssize(1)/settings.npy;
-%dpx = px;
-%dpy = px;
-xs = min(x):dpx:max(x);
+xs = min(x):dpx:max(x);   %Create x and y vectors in physical units for sensor
 ys = xs;
 
+%Use y_range=0 to tell the code to run a 1d problem
 if settings.y_range == 0
-    settings.npy = 1;
-    settings.ph_range = 0;
+    settings.npy = 1;   %Setup a single pixel in 1 for the 1d problem
+    settings.ph_range = 0;   %Zero out the y-direction angular range to all rays stay within 1d sensor
 end
 
+%Repeat same for x if 1d in x direction
 if settings.x_range == 0
     settings.npx = 1;
     settings.th_range = 0;
 end
+
+%Angular ranges -- ray angles are distributed uniformly across this range
 dph = settings.ph_range/settings.P;
 dth = settings.th_range/settings.Q;
-if ~settings.useParfor
-    %creates sparse form of matrix
-    A_sub = sparse(settings.npx*settings.npy,settings.N*settings.M*settings.P*settings.Q);
-end
-%preallocate
-A_vals = cell(settings.M*settings.N*settings.P*settings.Q,1);  
-r_outc = cell(settings.M*settings.N*settings.P*settings.Q,1);
-c_outc = cell(settings.M*settings.N*settings.P*settings.Q,1);
-v_outc = cell(settings.M*settings.N*settings.P*settings.Q,1);
 
-%Setup gradients
+%If not using parfor, preallocate the A matrix
+% Po
+%if ~settings.useParfor
+    %creates sparse form of matrix
+%    A_sub = sparse(settings.npx*settings.npy,settings.N*settings.M*settings.P*settings.Q);
+%end
+
+%preallocate cell to hold values and indices for sparse matrix creation
+%A_vals = cell(settings.M*settings.N*settings.P*settings.Q,1);    %DELETE THIS?
+r_outc = cell(settings.M*settings.N*settings.P*settings.Q,1);    %Row index goes here
+c_outc = cell(settings.M*settings.N*settings.P*settings.Q,1);    %Columns
+v_outc = cell(settings.M*settings.N*settings.P*settings.Q,1);    %values
+
+%Setup gradient of surface for refraction calculations
 if dy_idx == 0
     Fx = gradient(diffuser);
-    Fy = zeros(size(Fx));
+    Fy = zeros(size(Fx));  %No Fy if 1d 
 elseif dx_idx == 0
     Fy = gradient(diffuser);
     Fx = zeros(size(Fy));
-else
-    [Fx, Fy] = gradient(diffuser);
+else 
+    [Fx, Fy] = gradient(diffuser);   %2d gradient
 end
+
+%Convert gradient to correct units
 Fx = Fx/px;
 Fy = Fy/px;
 
@@ -120,6 +132,7 @@ if settings.vis_prop
     end
 end
 
+%Setup a waitbar for non parfor
 if ~settings.useParfor
     if settings.waitbar
         h5 = waitbar(0,'beginning');
@@ -130,9 +143,11 @@ end
 [Xg, Yg] = meshgrid(-dx_idx*px/2:px:dx_idx*px/2,-dx_idx*px/2:px:dx_idx*px/2);
 tstart1 = tic;
 if settings.useParfor
-    parfor LF_index = 1:settings.M*settings.N*settings.P*settings.Q
+    %Matlab makes you use one index in parfor loops, so linearly index each
+    %variable
+    parfor LF_index = 1:settings.M*settings.N*settings.P*settings.Q 
         ytstart = tic;
-        qq = 1+mod(LF_index-1,settings.Q);
+        qq = 1+mod(LF_index-1,settings.Q);    %Calculate the ind
         pp = 1+mod(floor((LF_index-1)/settings.Q),settings.P);
         nn = 1+mod(floor((LF_index-1)/settings.P/settings.Q),settings.N);
         mm = 1+mod(floor((LF_index-1)/settings.P/settings.Q/settings.N),settings.M);
@@ -142,46 +157,34 @@ if settings.useParfor
         %Generate y vector in physical units in local coordinates
         %(i.e. origin shifts wich each new region
         yg = px*(midx-midx(1));
-        %yr = dx_idx*px*(rand(settings.nrays,1));
         
         nidx = (((nn-1)*dx_idx+1):(nn*dx_idx+1))';
         nidx_1 = nidx(1);
         xg = (nidx-nidx(1))*px;
         
-        %[NIDX, MIDX] = meshgrid(nidx,midx);
-        
         Fx_crop = Fx(midx,nidx);
         Fy_crop = Fy(midx,nidx);
-        
-        %LF_index_start = settings.P*settings.Q*settings.N*(mm-1)+settings.P*settings.Q*(nn-1);
-        %LF_index_start = settings.P*settings.Q*settings.N*(mm-1)+settings.P*settings.Q*(nn-1)+settings.Q*(pp-1);
-        
-        
         
         ph = dph*(rand(settings.nrays,1)-pp+settings.P/2);
         th = dth*(rand(settings.nrays,1)-qq+settings.Q/2); %random theta points
         
         
         %Generate random (x,y) positions within dx_idx*px wide
-        %square
+        %square -- these are the physical locations where each ray will
+        %strike the diffuser
         yr = (dy_idx)*px*rand(settings.nrays,1);
         xr = (dx_idx)*px*rand(settings.nrays,1);
-        
-        
-        %Calculate surface norm at random positions by
-        %interpolation within gradient
-        
-        %Get z and surface normal at each random (xr(i),yr(i)) pair
+           
+        %Estimate slope of diffuser at each (xr,yr) position
         if dy_idx==0
             Fxr = interp1(xg,Fx_crop,xr);  %Interpolate x gradient
             Fyr = zeros(size(Fxr));
-            %zr = interp1(xg,diff_crop,xr);   %Interpolate surface
         elseif dx_idx==0
             Fyr = interp1(yg,Fy_crop,yr);  %Interpolate x gradient
             Fxr = zeros(size(Fyr));
-            %zr = interp1(yg,diff_crop,yr);   %Interpolate surface
         else
-            %zr = interp2(xg,yg,diff_crop,xr,yr);   %Interpolate surface
+            %Choose nearest neightbor interpolation for speed, or default
+            %for accuracy
             if strcmpi(settings.interp_method,'nearest')
                 Fxr = interp2(xg,yg,Fx_crop,xr,yr,settings.interp_method);  %Interpolate x gradient
                 Fyr = interp2(xg,yg,Fy_crop,xr,yr,settings.interp_method);  %Interpolate y gradiet
@@ -191,6 +194,7 @@ if settings.useParfor
             end
         end
         
+        %Choose paraxial approximation or real vector based tracing
         if ~settings.paraxial
             %Refraction starts here ---------------------
             [uxp, uyp, uzp] = refraction(Fxr, Fyr, th, ph, settings.indexDiff, settings.indexEnv,'angles');
@@ -201,8 +205,7 @@ if settings.useParfor
             %                 yo = uyp./uzp*settings.z0+yr;
             %                 xo = uxp./uzp*settings.z0+xr;
         elseif settings.paraxial
-            %yoxo = [yr,xr]+settings.z0*[settings.dn*Fyr+ph*pi/180*settings.indexDiff,settings.dn*Fxr+th*pi/180*settings.indexDiff];
-            %%%%%%FIX THIS%%%%%%%%%%%%%% to be n/n' theta + (n/n' - 1) Fxr
+            
             xo = xr+settings.z0*(settings.dn*Fxr+th*pi/180*settings.indexDiff);
             yo = yr+settings.z0*(settings.dn*Fyr+ph*pi/180*settings.indexDiff);
         end
@@ -212,7 +215,9 @@ if settings.useParfor
         %dumb, but the hist code doesn't work when there's 1 ray,
         %and I don't care about a single ray anyway.
         if nnz(gatherer)>1
-            
+            %Gather rays on sensor. This is essentially a 2D histogram, but
+            %outputs appropriate row, column and value cells for passing
+            %into sparse matrix construction at end of loop
             [r_outc{LF_index}, c_outc{LF_index}, v_outc{LF_index}] = ...
                 build_A_matrix_sparse(gatherer,LF_index);
         end
@@ -227,11 +232,11 @@ else
         yg = px*(midx-midx(1));
         %yr = dx_idx*px*(rand(settings.nrays,1));
         for nn = 1:max(1,settings.N)
-            nidx = (((nn-1)*dx_idx+1):(nn*dx_idx+1))';
+            nidx = (((nn-1)*dx_idx+1):(nn*dx_idx+1))';   %x direction (column) index for pulling diffuser patch out of master diffuser surface array
             xg = (nidx-nidx(1))*px;
             diff_crop = diffuser(midx,nidx);
             
-            [NIDX, MIDX] = meshgrid(nidx,midx);
+            [NIDX, MIDX] = meshgrid(nidx,midx);  %The meshgridded version of nidx and midx are only used for plotting
             
             Fx_crop = Fx(midx,nidx);
             Fy_crop = Fy(midx,nidx);
@@ -265,6 +270,7 @@ else
                         Fyr = interp2(xg,yg,Fy_crop,xr,yr);  %Interpolate y gradiet
                     end
                     
+                    %Choose between paraxial and real snell's law
                     if ~settings.paraxial
                         %Refraction starts here ---------------------
                         [uxp, uyp, uzp] = refraction(Fxr, Fyr, th, ph, settings.indexDiff, settings.indexEnv,'angles');
@@ -300,15 +306,10 @@ else
                     %and I don't care about a single ray anyway.
                     if nnz(gatherer)>1
                         
-                        %make light field index
+                        %make light field index. This is so it matches with
+                        %parfor version
                         LF_index = settings.P*settings.Q*settings.N*(mm-1)+settings.P*settings.Q*(nn-1)+settings.Q*(pp-1)+qq;
-                        %[A_row_index{LF_index}, A_vals{LF_index}] = find(gatherer(:));
-                        %A_sub(:,LF_index) = gatherer(:);
-                        %A_sub = build_A_matrix(A_sub,gatherer,LF_index);
-                        %[r,c,v] = build_A_matrix_sparse(gatherer,LF_index);
-                        %r_out = cat(1,r_out,r);
-                        %c_out = cat(1,c_out,c);
-                        %v_out = cat(1,v_out,v);
+
                         [r_outc{LF_index}, c_outc{LF_index}, v_outc{LF_index}] = ...
                             build_A_matrix_sparse(gatherer,LF_index);
                         
